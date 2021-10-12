@@ -190,7 +190,7 @@ VALUES ('ab', 'Abkhaz'),
        ('yo', 'Yoruba'),
        ('za', 'Zhuang, Chuang');
 
-CREATE TABLE IF NOT EXISTS "country_list" (
+CREATE TABLE IF NOT EXISTS country_list (
     name TEXT NOT NULL,
     code TEXT NOT NULL PRIMARY KEY
 );
@@ -461,8 +461,6 @@ CREATE TABLE IF NOT EXISTS participant (
     country                 TEXT NOT NULL UNIQUE,
     first_name              TEXT NOT NULL,
     last_name               TEXT NOT NULL,
-    registration_allowed    BOOLEAN NOT NULL,
-    registration_date       TIMESTAMP WITH TIME ZONE,
 	created_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
 	updated_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
     CONSTRAINT fk_country_code FOREIGN KEY(country) REFERENCES country_list(code),
@@ -474,15 +472,16 @@ CREATE TABLE IF NOT EXISTS broadcast_url (
 	id                      SERIAL PRIMARY KEY,
     url                     TEXT NOT NULL,
     platform                TEXT NOT NULL,
+    language                TEXT NOT NULL,
 	created_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
 	updated_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    CONSTRAINT fk_language_code FOREIGN KEY(language) REFERENCES language_list(code),
     CONSTRAINT fk_platform_id FOREIGN KEY(platform) REFERENCES platform(name)
 );
 
 CREATE TABLE IF NOT EXISTS item (
 	id                      SERIAL PRIMARY KEY,
-    date                    TIMESTAMP WITH TIME ZONE,
-    time                    TIMESTAMP WITH TIME ZONE,
+    start_date              TIMESTAMP WITH TIME ZONE,
     duration                INT NOT NULL,
     name                    TEXT NOT NULL,
     original_language       TEXT NOT NULL,
@@ -494,10 +493,21 @@ CREATE TABLE IF NOT EXISTS item (
     CONSTRAINT fk_original_language_code FOREIGN KEY(original_language) REFERENCES language_list(code)
 );
 
+CREATE TABLE IF NOT EXISTS item_broadcast_url (
+    id                      SERIAL PRIMARY KEY,
+    item_id                 INT NOT NULL,
+    broadcast_url_id        INT NOT NULL,
+    created_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    CONSTRAINT fk_item_id FOREIGN KEY(item_id) REFERENCES item(id),
+    CONSTRAINT fk_broadcast_url_id FOREIGN KEY(broadcast_url_id) REFERENCES broadcast_url(id)
+);
+
+
 CREATE TABLE IF NOT EXISTS event (
 	id                      SERIAL PRIMARY KEY,
 	participant_id          INT NOT NULL,
-	registration_required   BOOLEAN NOT NULL,
+	registration_required   BOOLEAN NOT NULL DEFAULT false,
 	registration_status     TEXT NOT NULL DEFAULT 'open',
 	audience                TEXT NOT NULL DEFAULT 'all',
 	slug                    TEXT NOT NULL,
@@ -508,7 +518,7 @@ CREATE TABLE IF NOT EXISTS event (
     participation_option    TEXT NOT NULL,
 	starts_on               TIMESTAMP WITH TIME ZONE NOT NULL,
 	ends_on                 TIMESTAMP WITH TIME ZONE NOT NULL,
-    date_confirmed          BOOLEAN NOT NULL,
+    date_confirmed          BOOLEAN NOT NULL DEFAULT false,
 	created_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
 	updated_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
     CONSTRAINT fk_participant_id FOREIGN KEY(participant_id) REFERENCES participant(id),
@@ -517,11 +527,22 @@ CREATE TABLE IF NOT EXISTS event (
     CONSTRAINT fk_participation_option_name FOREIGN KEY(participation_option) REFERENCES participation_option(name)
 );
 
+CREATE TABLE IF NOT EXISTS event_participation_option (
+    id                      SERIAL PRIMARY KEY,
+    event_id                INT NOT NULL,
+    participation_option    TEXT NOT NULL,
+    created_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    CONSTRAINT fk_event_id FOREIGN KEY(event_id) REFERENCES event(id),
+    CONSTRAINT fk_participation_option_id FOREIGN KEY(participation_option) REFERENCES participation_option(name)
+);
+
 CREATE TABLE IF NOT EXISTS participation_status (
 	id                   SERIAL PRIMARY KEY,
     participation_option TEXT NOT NULL,
     participant_id       INT NOT NULL,
     event_id             INT NOT NULL,
+    registration_date    TIMESTAMP WITH TIME ZONE,
     CONSTRAINT fk_participant_id FOREIGN KEY(participant_id) REFERENCES participant(id),
     CONSTRAINT fk_participation_option_name FOREIGN KEY(participation_option) REFERENCES participation_option(name),
     CONSTRAINT fk_event_id FOREIGN KEY(event_id) REFERENCES event(id)
