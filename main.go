@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
-	ctrl "vh-srv-event/controller"
+	part "vh-srv-event/participant"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -14,7 +15,7 @@ import (
 )
 
 type Controllers struct {
-	Participant ctrl.Participant
+	Participant part.Participant
 }
 
 // cfg is the struct type that contains fields that stores the necessary configuration
@@ -29,7 +30,7 @@ var cfg struct {
 
 type Router struct {
 	server      *gin.Engine
-	participant ctrl.Participant
+	participant part.Participant
 }
 
 func NewRouter(server *gin.Engine, controller Controllers) *Router {
@@ -41,8 +42,6 @@ func NewRouter(server *gin.Engine, controller Controllers) *Router {
 func (r *Router) Init() {
 
 	basePath := r.server.Group("/v1")
-
-	basePath.GET("/health", ctrl.Health)
 
 	participant := basePath.Group("/participant")
 	{
@@ -64,14 +63,17 @@ func main() {
 
 	databaseURL := "postgres://" + cfg.DBUser + ":" + cfg.DBPass + "@" + cfg.DBHost + ":" + cfg.DBPort + "/" + cfg.DBName
 
-	conn, err := pgxpool.Connect(context.Background(), databaseURL)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := pgxpool.Connect(ctx, databaseURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
 		os.Exit(1)
 	}
 	defer conn.Close()
 
-	participant := ctrl.NewParticipant(conn)
+	participant := part.NewParticipant(conn)
 
 	r := NewRouter(route, Controllers{
 		Participant: participant,
