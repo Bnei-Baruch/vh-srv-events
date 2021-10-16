@@ -1,4 +1,4 @@
-package participant
+package platform
 
 import (
 	"context"
@@ -12,36 +12,36 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-type partOptionResponse struct {
+type platformResponse struct {
 	Name *string `json:"name" db:"name"`
 }
 
-type partOption struct {
+type platform struct {
 	Name *string `json:"Name" db:"Name" validate:"required"`
 }
 
-type ParticipationOption interface {
-	GetParticipationOptionByName(ctx *gin.Context)
-	GetAllParticipationOption(ctx *gin.Context)
-	CreateNewParticipationOption(ctx *gin.Context)
-	UpdateParticipationOptionByName(ctx *gin.Context)
-	DeleteParticipationOptionByName(ctx *gin.Context)
+type Platform interface {
+	GetPlatformByName(ctx *gin.Context)
+	GetAllPlatform(ctx *gin.Context)
+	CreateNewPlatform(ctx *gin.Context)
+	UpdatePlatformByName(ctx *gin.Context)
+	DeletePlatformByName(ctx *gin.Context)
 }
 
-type ParticipationOptionDB struct {
+type PlatformDB struct {
 	db *pgxpool.Pool
 }
 
-func NewParticipationOption(db *pgxpool.Pool) ParticipationOption {
-	return &ParticipationOptionDB{
+func NewPlatform(db *pgxpool.Pool) Platform {
+	return &PlatformDB{
 		db,
 	}
 }
 
-func (r *ParticipationOptionDB) GetParticipationOptionByName(ctx *gin.Context) {
+func (r *PlatformDB) GetPlatformByName(ctx *gin.Context) {
 	name := ctx.Param("name")
 
-	u, err := getPartOptionByName(r, ctx, name)
+	u, err := getPlatformById(r, ctx, name)
 
 	if err != nil {
 		if err.Error() == "not found" {
@@ -60,7 +60,7 @@ func (r *ParticipationOptionDB) GetParticipationOptionByName(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "Fetched!", "data": u, "success": true})
 }
 
-func (r *ParticipationOptionDB) GetAllParticipationOption(ctx *gin.Context) {
+func (r *PlatformDB) GetAllPlatform(ctx *gin.Context) {
 	skip := ctx.Query("skip")
 	limit := ctx.Query("limit")
 
@@ -86,7 +86,7 @@ func (r *ParticipationOptionDB) GetAllParticipationOption(ctx *gin.Context) {
 		return
 	}
 
-	u, err := GetAllPartOption(r, ctx, intSkip, intLimit)
+	u, err := GetAllPlatform(r, ctx, intSkip, intLimit)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -98,8 +98,8 @@ func (r *ParticipationOptionDB) GetAllParticipationOption(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "Fetched!", "data": u, "success": true})
 }
 
-func (r *ParticipationOptionDB) CreateNewParticipationOption(ctx *gin.Context) {
-	s := partOption{}
+func (r *PlatformDB) CreateNewPlatform(ctx *gin.Context) {
+	s := platform{}
 	if err := ctx.ShouldBindJSON(&s); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
@@ -118,7 +118,7 @@ func (r *ParticipationOptionDB) CreateNewParticipationOption(ctx *gin.Context) {
 		return
 	}
 
-	if err := CreateNewPartOption(r, ctx, s); err != nil {
+	if err := CreateNewPlatform(r, ctx, s); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"success": false,
@@ -126,11 +126,11 @@ func (r *ParticipationOptionDB) CreateNewParticipationOption(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Created new participation option!", "data": s, "success": true})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Created new platform!", "data": s, "success": true})
 }
 
-func (r *ParticipationOptionDB) UpdateParticipationOptionByName(ctx *gin.Context) {
-	u := partOption{}
+func (r *PlatformDB) UpdatePlatformByName(ctx *gin.Context) {
+	u := platform{}
 	if err := ctx.ShouldBindJSON(&u); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
@@ -141,7 +141,7 @@ func (r *ParticipationOptionDB) UpdateParticipationOptionByName(ctx *gin.Context
 
 	name := ctx.Param("name")
 
-	if err := UpdatePartOptionByName(r, ctx, u, name); err != nil {
+	if err := UpdatePlatformByName(r, ctx, u, name); err != nil {
 
 		if err.Error() == "not found" {
 			ctx.JSON(http.StatusNotFound, gin.H{
@@ -165,14 +165,14 @@ func (r *ParticipationOptionDB) UpdateParticipationOptionByName(ctx *gin.Context
 		})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"message": "Participation option updated successfully", "data": u, "success": true})
+	ctx.JSON(http.StatusOK, gin.H{"message": "platform updated successfully", "data": u, "success": true})
 }
 
-func (r *ParticipationOptionDB) DeleteParticipationOptionByName(ctx *gin.Context) {
+func (r *PlatformDB) DeletePlatformByName(ctx *gin.Context) {
 
 	name := ctx.Param("name")
 
-	if err := DeletePartOptionByName(r, ctx, name); err != nil {
+	if err := DeletePlatformByName(r, ctx, name); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"success": false,
@@ -180,32 +180,32 @@ func (r *ParticipationOptionDB) DeleteParticipationOptionByName(ctx *gin.Context
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Participation option deleted successfully!", "success": true})
+	ctx.JSON(http.StatusOK, gin.H{"message": "platform deleted successfully!", "success": true})
 }
 
-func getPartOptionByName(r *ParticipationOptionDB, ctx *gin.Context, name string) (partOptionResponse, error) {
-	u := partOptionResponse{}
+func getPlatformById(r *PlatformDB, ctx *gin.Context, name string) (platformResponse, error) {
+	u := platformResponse{}
 	if err := r.db.QueryRow(ctx, `select 
 	name 
-	from participation_option where name = $1`, name).Scan(
+	from platform where name = $1`, name).Scan(
 		&u.Name,
 	); err != nil {
 		if err == pgx.ErrNoRows {
-			return partOptionResponse{}, fmt.Errorf("not found")
+			return platformResponse{}, fmt.Errorf("not found")
 		}
-		return partOptionResponse{}, err
+		return platformResponse{}, err
 	}
 	return u, nil
 }
 
-func GetAllPartOption(r *ParticipationOptionDB, ctx *gin.Context, skip int, limit int) (*[]partOptionResponse, error) {
+func GetAllPlatform(r *PlatformDB, ctx *gin.Context, skip int, limit int) (*[]platformResponse, error) {
 
-	u := []partOptionResponse{}
+	u := []platformResponse{}
 	rows, _ := r.db.Query(ctx, fmt.Sprintf(`select 
 	name 
-	from participation_option LIMIT %d OFFSET %d`, limit, skip))
+	from platform LIMIT %d OFFSET %d`, limit, skip))
 	for rows.Next() {
-		var d partOptionResponse
+		var d platformResponse
 		err := rows.Scan(&d.Name)
 		if err != nil {
 			return &u, err
@@ -215,12 +215,12 @@ func GetAllPartOption(r *ParticipationOptionDB, ctx *gin.Context, skip int, limi
 	return &u, rows.Err()
 }
 
-func UpdatePartOptionByName(r *ParticipationOptionDB, ctx *gin.Context, req partOption, name string) error {
+func UpdatePlatformByName(r *PlatformDB, ctx *gin.Context, req platform, name string) error {
 	fmt.Println(req.Name)
 	if req.Name != nil {
-		updateRes, err := r.db.Exec(ctx, `UPDATE participation_option SET name=$1 WHERE name=$2`, req.Name, name)
+		updateRes, err := r.db.Exec(ctx, `UPDATE platform SET name=$1 WHERE name=$2`, req.Name, name)
 		if err != nil {
-			return fmt.Errorf("problem updating participation_option: %w", err)
+			return fmt.Errorf("problem updating platform: %w", err)
 		}
 
 		if updateRes.RowsAffected() == 0 {
@@ -233,9 +233,9 @@ func UpdatePartOptionByName(r *ParticipationOptionDB, ctx *gin.Context, req part
 	}
 }
 
-func CreateNewPartOption(r *ParticipationOptionDB, ctx *gin.Context, req partOption) error {
+func CreateNewPlatform(r *PlatformDB, ctx *gin.Context, req platform) error {
 	_, err := r.db.Exec(ctx,
-		`INSERT INTO participation_option (
+		`INSERT INTO platform (
 			name)
 		VALUES (
 			$1)  `,
@@ -244,7 +244,7 @@ func CreateNewPartOption(r *ParticipationOptionDB, ctx *gin.Context, req partOpt
 	return err
 }
 
-func DeletePartOptionByName(r *ParticipationOptionDB, ctx context.Context, name string) error {
-	_, err := r.db.Exec(ctx, "delete from participation_option where name=$1", name)
+func DeletePlatformByName(r *PlatformDB, ctx context.Context, name string) error {
+	_, err := r.db.Exec(ctx, "delete from platform where name=$1", name)
 	return err
 }

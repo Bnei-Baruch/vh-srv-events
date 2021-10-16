@@ -8,6 +8,7 @@ import (
 	"time"
 
 	part "vh-srv-event/participant"
+	"vh-srv-event/platform"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -17,6 +18,7 @@ import (
 type Controllers struct {
 	Participant         part.Participant
 	ParticipationOption part.ParticipationOption
+	Platform            platform.Platform
 }
 
 // cfg is the struct type that contains fields that stores the necessary configuration
@@ -34,6 +36,7 @@ type Router struct {
 	server              *gin.Engine
 	participant         part.Participant
 	participationOption part.ParticipationOption
+	platform            platform.Platform
 }
 
 func NewRouter(server *gin.Engine, controller Controllers) *Router {
@@ -41,6 +44,7 @@ func NewRouter(server *gin.Engine, controller Controllers) *Router {
 		server,
 		controller.Participant,
 		controller.ParticipationOption,
+		controller.Platform,
 	}
 }
 func (r *Router) Init() {
@@ -64,6 +68,15 @@ func (r *Router) Init() {
 		participationOption.GET("/:name", r.participationOption.GetParticipationOptionByName)
 	}
 	basePath.GET("/participation-options", r.participationOption.GetAllParticipationOption)
+
+	platform := basePath.Group("/platform")
+	{
+		platform.POST("/", r.platform.CreateNewPlatform)
+		platform.PATCH("/:name", r.platform.UpdatePlatformByName)
+		platform.DELETE("/:name", r.platform.DeletePlatformByName)
+		platform.GET("/:name", r.platform.GetPlatformByName)
+	}
+	basePath.GET("/platforms", r.platform.GetAllPlatform)
 }
 
 func main() {
@@ -88,10 +101,12 @@ func main() {
 
 	participant := part.NewParticipant(conn)
 	participationOption := part.NewParticipationOption(conn)
+	platform := platform.NewPlatform(conn)
 
 	r := NewRouter(route, Controllers{
 		Participant:         participant,
 		ParticipationOption: participationOption,
+		Platform:            platform,
 	})
 
 	r.Init()
