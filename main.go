@@ -9,6 +9,7 @@ import (
 
 	"vh-srv-event/audience"
 	part "vh-srv-event/participant"
+	partoptn "vh-srv-event/partoptn"
 	"vh-srv-event/platform"
 
 	"github.com/gin-gonic/gin"
@@ -18,7 +19,7 @@ import (
 
 type Controllers struct {
 	Participant         part.Participant
-	ParticipationOption part.ParticipationOption
+	ParticipationOption partoptn.ParticipationOption
 	Platform            platform.Platform
 	Audience            audience.Audience
 }
@@ -37,7 +38,7 @@ var cfg struct {
 type Router struct {
 	server              *gin.Engine
 	participant         part.Participant
-	participationOption part.ParticipationOption
+	participationOption partoptn.ParticipationOption
 	platform            platform.Platform
 	audience            audience.Audience
 }
@@ -113,7 +114,7 @@ func main() {
 	defer conn.Close()
 
 	participant := part.NewParticipant(conn)
-	participationOption := part.NewParticipationOption(conn)
+	participationOption := partoptn.NewParticipationOption(conn)
 	platform := platform.NewPlatform(conn)
 	audience := audience.NewAudience(conn)
 
