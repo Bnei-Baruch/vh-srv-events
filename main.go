@@ -15,7 +15,8 @@ import (
 )
 
 type Controllers struct {
-	Participant part.Participant
+	Participant         part.Participant
+	ParticipationOption part.ParticipationOption
 }
 
 // cfg is the struct type that contains fields that stores the necessary configuration
@@ -30,14 +31,16 @@ var cfg struct {
 }
 
 type Router struct {
-	server      *gin.Engine
-	participant part.Participant
+	server              *gin.Engine
+	participant         part.Participant
+	participationOption part.ParticipationOption
 }
 
 func NewRouter(server *gin.Engine, controller Controllers) *Router {
 	return &Router{
 		server,
 		controller.Participant,
+		controller.ParticipationOption,
 	}
 }
 func (r *Router) Init() {
@@ -52,6 +55,15 @@ func (r *Router) Init() {
 		participant.GET("/:id", r.participant.GetParticipantById)
 	}
 	basePath.GET("/participants", r.participant.GetAllParticipant)
+
+	participationOption := basePath.Group("/participation-option")
+	{
+		participationOption.POST("/", r.participationOption.CreateNewParticipationOption)
+		participationOption.PATCH("/:name", r.participationOption.UpdateParticipationOptionByName)
+		participationOption.DELETE("/:name", r.participationOption.DeleteParticipationOptionByName)
+		participationOption.GET("/:name", r.participationOption.GetParticipationOptionByName)
+	}
+	basePath.GET("/participation-options", r.participationOption.GetAllParticipationOption)
 }
 
 func main() {
@@ -75,9 +87,11 @@ func main() {
 	defer conn.Close()
 
 	participant := part.NewParticipant(conn)
+	participationOption := part.NewParticipationOption(conn)
 
 	r := NewRouter(route, Controllers{
-		Participant: participant,
+		Participant:         participant,
+		ParticipationOption: participationOption,
 	})
 
 	r.Init()
