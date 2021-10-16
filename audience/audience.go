@@ -1,4 +1,4 @@
-package platform
+package audience
 
 import (
 	"context"
@@ -12,36 +12,36 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-type platformResponse struct {
+type audienceResponse struct {
 	Name *string `json:"name" db:"name"`
 }
 
-type platform struct {
+type audience struct {
 	Name *string `json:"Name" db:"Name" validate:"required"`
 }
 
-type Platform interface {
-	GetPlatformByName(ctx *gin.Context)
-	GetAllPlatform(ctx *gin.Context)
-	CreateNewPlatform(ctx *gin.Context)
-	UpdatePlatformByName(ctx *gin.Context)
-	DeletePlatformByName(ctx *gin.Context)
+type Audience interface {
+	GetAudienceByName(ctx *gin.Context)
+	GetAllAudience(ctx *gin.Context)
+	CreateNewAudience(ctx *gin.Context)
+	UpdateAudienceByName(ctx *gin.Context)
+	DeleteAudienceByName(ctx *gin.Context)
 }
 
-type PlatformDB struct {
+type AudienceDB struct {
 	db *pgxpool.Pool
 }
 
-func NewPlatform(db *pgxpool.Pool) Platform {
-	return &PlatformDB{
+func NewAudience(db *pgxpool.Pool) Audience {
+	return &AudienceDB{
 		db,
 	}
 }
 
-func (r *PlatformDB) GetPlatformByName(ctx *gin.Context) {
+func (r *AudienceDB) GetAudienceByName(ctx *gin.Context) {
 	name := ctx.Param("name")
 
-	u, err := getPlatformByName(r, ctx, name)
+	u, err := getAudienceByName(r, ctx, name)
 
 	if err != nil {
 		if err.Error() == "not found" {
@@ -60,7 +60,7 @@ func (r *PlatformDB) GetPlatformByName(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "Fetched!", "data": u, "success": true})
 }
 
-func (r *PlatformDB) GetAllPlatform(ctx *gin.Context) {
+func (r *AudienceDB) GetAllAudience(ctx *gin.Context) {
 	skip := ctx.Query("skip")
 	limit := ctx.Query("limit")
 
@@ -86,7 +86,7 @@ func (r *PlatformDB) GetAllPlatform(ctx *gin.Context) {
 		return
 	}
 
-	u, err := GetAllPlatform(r, ctx, intSkip, intLimit)
+	u, err := GetAllAudience(r, ctx, intSkip, intLimit)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -98,8 +98,8 @@ func (r *PlatformDB) GetAllPlatform(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "Fetched!", "data": u, "success": true})
 }
 
-func (r *PlatformDB) CreateNewPlatform(ctx *gin.Context) {
-	s := platform{}
+func (r *AudienceDB) CreateNewAudience(ctx *gin.Context) {
+	s := audience{}
 	if err := ctx.ShouldBindJSON(&s); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
@@ -118,7 +118,7 @@ func (r *PlatformDB) CreateNewPlatform(ctx *gin.Context) {
 		return
 	}
 
-	if err := CreateNewPlatform(r, ctx, s); err != nil {
+	if err := CreateNewAudience(r, ctx, s); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"success": false,
@@ -126,11 +126,11 @@ func (r *PlatformDB) CreateNewPlatform(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Created new platform!", "data": s, "success": true})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Created new audience!", "data": s, "success": true})
 }
 
-func (r *PlatformDB) UpdatePlatformByName(ctx *gin.Context) {
-	u := platform{}
+func (r *AudienceDB) UpdateAudienceByName(ctx *gin.Context) {
+	u := audience{}
 	if err := ctx.ShouldBindJSON(&u); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
@@ -141,7 +141,7 @@ func (r *PlatformDB) UpdatePlatformByName(ctx *gin.Context) {
 
 	name := ctx.Param("name")
 
-	if err := UpdatePlatformByName(r, ctx, u, name); err != nil {
+	if err := UpdateAudienceByName(r, ctx, u, name); err != nil {
 
 		if err.Error() == "not found" {
 			ctx.JSON(http.StatusNotFound, gin.H{
@@ -165,14 +165,14 @@ func (r *PlatformDB) UpdatePlatformByName(ctx *gin.Context) {
 		})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"message": "platform updated successfully", "data": u, "success": true})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Audience updated successfully", "data": u, "success": true})
 }
 
-func (r *PlatformDB) DeletePlatformByName(ctx *gin.Context) {
+func (r *AudienceDB) DeleteAudienceByName(ctx *gin.Context) {
 
 	name := ctx.Param("name")
 
-	if err := DeletePlatformByName(r, ctx, name); err != nil {
+	if err := DeleteAudienceByName(r, ctx, name); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"success": false,
@@ -180,32 +180,32 @@ func (r *PlatformDB) DeletePlatformByName(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "platform deleted successfully!", "success": true})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Audience deleted successfully!", "success": true})
 }
 
-func getPlatformByName(r *PlatformDB, ctx *gin.Context, name string) (platformResponse, error) {
-	u := platformResponse{}
+func getAudienceByName(r *AudienceDB, ctx *gin.Context, name string) (audienceResponse, error) {
+	u := audienceResponse{}
 	if err := r.db.QueryRow(ctx, `select 
 	name 
-	from platform where name = $1`, name).Scan(
+	from audience where name = $1`, name).Scan(
 		&u.Name,
 	); err != nil {
 		if err == pgx.ErrNoRows {
-			return platformResponse{}, fmt.Errorf("not found")
+			return audienceResponse{}, fmt.Errorf("not found")
 		}
-		return platformResponse{}, err
+		return audienceResponse{}, err
 	}
 	return u, nil
 }
 
-func GetAllPlatform(r *PlatformDB, ctx *gin.Context, skip int, limit int) (*[]platformResponse, error) {
+func GetAllAudience(r *AudienceDB, ctx *gin.Context, skip int, limit int) (*[]audienceResponse, error) {
 
-	u := []platformResponse{}
+	u := []audienceResponse{}
 	rows, _ := r.db.Query(ctx, fmt.Sprintf(`select 
 	name 
-	from platform LIMIT %d OFFSET %d`, limit, skip))
+	from audience LIMIT %d OFFSET %d`, limit, skip))
 	for rows.Next() {
-		var d platformResponse
+		var d audienceResponse
 		err := rows.Scan(&d.Name)
 		if err != nil {
 			return &u, err
@@ -215,12 +215,12 @@ func GetAllPlatform(r *PlatformDB, ctx *gin.Context, skip int, limit int) (*[]pl
 	return &u, rows.Err()
 }
 
-func UpdatePlatformByName(r *PlatformDB, ctx *gin.Context, req platform, name string) error {
+func UpdateAudienceByName(r *AudienceDB, ctx *gin.Context, req audience, name string) error {
 	fmt.Println(req.Name)
 	if req.Name != nil {
-		updateRes, err := r.db.Exec(ctx, `UPDATE platform SET name=$1 WHERE name=$2`, req.Name, name)
+		updateRes, err := r.db.Exec(ctx, `UPDATE audience SET name=$1 WHERE name=$2`, req.Name, name)
 		if err != nil {
-			return fmt.Errorf("problem updating platform: %w", err)
+			return fmt.Errorf("problem updating audience: %w", err)
 		}
 
 		if updateRes.RowsAffected() == 0 {
@@ -233,9 +233,9 @@ func UpdatePlatformByName(r *PlatformDB, ctx *gin.Context, req platform, name st
 	}
 }
 
-func CreateNewPlatform(r *PlatformDB, ctx *gin.Context, req platform) error {
+func CreateNewAudience(r *AudienceDB, ctx *gin.Context, req audience) error {
 	_, err := r.db.Exec(ctx,
-		`INSERT INTO platform (
+		`INSERT INTO audience (
 			name)
 		VALUES (
 			$1)  `,
@@ -244,7 +244,7 @@ func CreateNewPlatform(r *PlatformDB, ctx *gin.Context, req platform) error {
 	return err
 }
 
-func DeletePlatformByName(r *PlatformDB, ctx context.Context, name string) error {
-	_, err := r.db.Exec(ctx, "delete from platform where name=$1", name)
+func DeleteAudienceByName(r *AudienceDB, ctx context.Context, name string) error {
+	_, err := r.db.Exec(ctx, "delete from audience where name=$1", name)
 	return err
 }

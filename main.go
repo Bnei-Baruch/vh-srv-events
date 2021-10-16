@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"vh-srv-event/audience"
 	part "vh-srv-event/participant"
 	"vh-srv-event/platform"
 
@@ -19,6 +20,7 @@ type Controllers struct {
 	Participant         part.Participant
 	ParticipationOption part.ParticipationOption
 	Platform            platform.Platform
+	Audience            audience.Audience
 }
 
 // cfg is the struct type that contains fields that stores the necessary configuration
@@ -37,6 +39,7 @@ type Router struct {
 	participant         part.Participant
 	participationOption part.ParticipationOption
 	platform            platform.Platform
+	audience            audience.Audience
 }
 
 func NewRouter(server *gin.Engine, controller Controllers) *Router {
@@ -45,6 +48,7 @@ func NewRouter(server *gin.Engine, controller Controllers) *Router {
 		controller.Participant,
 		controller.ParticipationOption,
 		controller.Platform,
+		controller.Audience,
 	}
 }
 func (r *Router) Init() {
@@ -77,6 +81,15 @@ func (r *Router) Init() {
 		platform.GET("/:name", r.platform.GetPlatformByName)
 	}
 	basePath.GET("/platforms", r.platform.GetAllPlatform)
+
+	audience := basePath.Group("/audience")
+	{
+		audience.POST("/", r.audience.CreateNewAudience)
+		audience.PATCH("/:name", r.audience.UpdateAudienceByName)
+		audience.DELETE("/:name", r.audience.DeleteAudienceByName)
+		audience.GET("/:name", r.audience.GetAudienceByName)
+	}
+	basePath.GET("/audiences", r.audience.GetAllAudience)
 }
 
 func main() {
@@ -102,11 +115,13 @@ func main() {
 	participant := part.NewParticipant(conn)
 	participationOption := part.NewParticipationOption(conn)
 	platform := platform.NewPlatform(conn)
+	audience := audience.NewAudience(conn)
 
 	r := NewRouter(route, Controllers{
 		Participant:         participant,
 		ParticipationOption: participationOption,
 		Platform:            platform,
+		Audience:            audience,
 	})
 
 	r.Init()
