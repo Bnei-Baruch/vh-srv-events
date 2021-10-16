@@ -21,11 +21,12 @@ type Controllers struct {
 // cfg is the struct type that contains fields that stores the necessary configuration
 // gathered from the environment.
 var cfg struct {
-	DBUser string `envconfig:"DB_USER" default:"postgres"`
-	DBPass string `envconfig:"DB_PASSWORD" default:"password"`
-	DBName string `envconfig:"DB_DATABASE" default:"event"`
-	DBHost string `envconfig:"DB_HOST" default:"localhost"`
-	DBPort string `envconfig:"DB_PORT" default:"5432"`
+	DBUser   string `envconfig:"DB_USER" default:"postgres"`
+	DBPass   string `envconfig:"DB_PASSWORD" default:"password"`
+	DBName   string `envconfig:"DB_DATABASE" default:"event"`
+	DBHost   string `envconfig:"DB_HOST" default:"localhost"`
+	DBPort   string `envconfig:"DB_PORT" default:"5432"`
+	APP_PORT string `envconfig:"APP_PORT" default:"8080"`
 }
 
 type Router struct {
@@ -81,5 +82,5 @@ func main() {
 
 	r.Init()
 
-	route.Run("localhost:8080")
+	route.Run("localhost:" + cfg.APP_PORT)
 }

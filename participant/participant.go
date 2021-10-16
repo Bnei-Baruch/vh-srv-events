@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-type partStruct struct {
+type partResponse struct {
 	ID            *int       `json:"id" db:"id"`
 	KeycloakID    *string    `json:"keycloak_id" db:"keycloak_id"`
 	FirstLanguage *string    `json:"first_language" db:"first_language"`
@@ -28,16 +29,16 @@ type partStruct struct {
 	UpdatedAt     *time.Time `json:"updated_at" db:"updated_at"`
 }
 
-type partRequest struct {
-	KeycloakID    *string    `json:"keycloak_id" db:"keycloak_id"`
-	FirstLanguage *string    `json:"first_language" db:"first_language"`
-	EmailLanguage *string    `json:"email_language" db:"email_language"`
-	DOB           *time.Time `json:"dob" db:"dob"`
-	Gender        *string    `json:"gender" db:"gender"`
-	Email         *string    `json:"email" db:"email"`
-	Country       *string    `json:"country" db:"country"`
-	FirstName     *string    `json:"first_name" db:"first_name"`
-	LastName      *string    `json:"last_name" db:"last_name"`
+type part struct {
+	KeycloakID    *string    `json:"keycloak_id" db:"keycloak_id" validate:"required"`
+	FirstLanguage *string    `json:"first_language" db:"first_language" validate:"required"`
+	EmailLanguage *string    `json:"email_language" db:"email_language" validate:"required"`
+	DOB           *time.Time `json:"dob" db:"dob" validate:"required"`
+	Gender        *string    `json:"gender" db:"gender" validate:"required"`
+	Email         *string    `json:"email" db:"email" validate:"required,email"`
+	Country       *string    `json:"country" db:"country" validate:"required"`
+	FirstName     *string    `json:"first_name" db:"first_name" validate:"required"`
+	LastName      *string    `json:"last_name" db:"last_name" validate:"required"`
 }
 
 type Participant interface {
@@ -119,7 +120,7 @@ func (r *ParticipantDB) GetAllParticipant(ctx *gin.Context) {
 }
 
 func (r *ParticipantDB) CreateNewParticipant(ctx *gin.Context) {
-	s := partRequest{}
+	s := part{}
 	if err := ctx.ShouldBindJSON(&s); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
@@ -128,9 +129,11 @@ func (r *ParticipantDB) CreateNewParticipant(ctx *gin.Context) {
 		return
 	}
 
-	if s.KeycloakID == nil || s.FirstLanguage == nil || s.EmailLanguage == nil || s.DOB == nil || s.Gender == nil || s.Email == nil || s.Country == nil || s.FirstName == nil || s.LastName == nil {
+	err := validator.New().Struct(s)
+
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid body parameters",
+			"error":   err.Error(),
 			"success": false,
 		})
 		return
@@ -148,18 +151,10 @@ func (r *ParticipantDB) CreateNewParticipant(ctx *gin.Context) {
 }
 
 func (r *ParticipantDB) UpdateParticipantByID(ctx *gin.Context) {
-	u := partRequest{}
+	u := part{}
 	if err := ctx.ShouldBindJSON(&u); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
-			"success": false,
-		})
-		return
-	}
-
-	if u.KeycloakID == nil && u.FirstLanguage == nil && u.EmailLanguage == nil && u.DOB == nil && u.Gender == nil && u.Email == nil && u.Country == nil && u.FirstName == nil && u.LastName == nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid body parameters",
 			"success": false,
 		})
 		return
@@ -171,6 +166,14 @@ func (r *ParticipantDB) UpdateParticipantByID(ctx *gin.Context) {
 
 		if err.Error() == "not found" {
 			ctx.JSON(http.StatusNotFound, gin.H{
+				"error":   err.Error(),
+				"success": false,
+			})
+			return
+		}
+
+		if err.Error() == "invalid values" {
+			ctx.JSON(http.StatusBadRequest, gin.H{
 				"error":   err.Error(),
 				"success": false,
 			})
@@ -201,8 +204,8 @@ func (r *ParticipantDB) DeleteParticipantByID(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "Participant deleted successfully!", "success": true})
 }
 
-func getPartById(r *ParticipantDB, ctx *gin.Context, id string) (partStruct, error) {
-	u := partStruct{}
+func getPartById(r *ParticipantDB, ctx *gin.Context, id string) (partResponse, error) {
+	u := partResponse{}
 	if err := r.db.QueryRow(ctx, `select 
 	id,
 	keycloak_id,
@@ -231,16 +234,16 @@ func getPartById(r *ParticipantDB, ctx *gin.Context, id string) (partStruct, err
 		&u.UpdatedAt,
 	); err != nil {
 		if err == pgx.ErrNoRows {
-			return partStruct{}, fmt.Errorf("not found")
+			return partResponse{}, fmt.Errorf("not found")
 		}
-		return partStruct{}, err
+		return partResponse{}, err
 	}
 	return u, nil
 }
 
-func GetAllPart(r *ParticipantDB, ctx *gin.Context, skip int, limit int) (*[]partStruct, error) {
+func GetAllPart(r *ParticipantDB, ctx *gin.Context, skip int, limit int) (*[]partResponse, error) {
 
-	u := []partStruct{}
+	u := []partResponse{}
 	rows, _ := r.db.Query(ctx, fmt.Sprintf(`select 
 	id,
 	keycloak_id,
@@ -256,7 +259,7 @@ func GetAllPart(r *ParticipantDB, ctx *gin.Context, skip int, limit int) (*[]par
 	updated_at 
 	from participant LIMIT %d OFFSET %d`, limit, skip))
 	for rows.Next() {
-		var d partStruct
+		var d partResponse
 		err := rows.Scan(&d.ID, &d.KeycloakID, &d.FirstLanguage, &d.EmailLanguage, &d.DOB, &d.Gender, &d.Email, &d.Country, &d.FirstName, &d.LastName, &d.CreatedAt, &d.UpdatedAt)
 		if err != nil {
 			return &u, err
@@ -266,7 +269,7 @@ func GetAllPart(r *ParticipantDB, ctx *gin.Context, skip int, limit int) (*[]par
 	return &u, rows.Err()
 }
 
-func UpdatePartByID(r *ParticipantDB, ctx *gin.Context, req partRequest, id string) error {
+func UpdatePartByID(r *ParticipantDB, ctx *gin.Context, req part, id string) error {
 	toUpdate, toUpdateArgs := prepareParticipantUpdateQuery(req)
 
 	if len(toUpdateArgs) != 0 {
@@ -282,11 +285,11 @@ func UpdatePartByID(r *ParticipantDB, ctx *gin.Context, req partRequest, id stri
 
 		return nil
 	} else {
-		return fmt.Errorf("problem updating participant")
+		return fmt.Errorf("invalid values")
 	}
 }
 
-func CreateNewPart(r *ParticipantDB, ctx *gin.Context, req partRequest) error {
+func CreateNewPart(r *ParticipantDB, ctx *gin.Context, req part) error {
 	_, err := r.db.Exec(ctx,
 		`INSERT INTO participant (
 			keycloak_id,
@@ -326,7 +329,7 @@ func DeletePartByID(r *ParticipantDB, ctx context.Context, id string) error {
 	return err
 }
 
-func prepareParticipantUpdateQuery(req partRequest) (string, []interface{}) {
+func prepareParticipantUpdateQuery(req part) (string, []interface{}) {
 	var updateStrings []string
 	var args []interface{}
 
