@@ -481,7 +481,7 @@ CREATE TABLE IF NOT EXISTS broadcast_url (
 
 CREATE TABLE IF NOT EXISTS item (
 	id                      SERIAL PRIMARY KEY,
-    start_date              TIMESTAMP WITH TIME ZONE,
+    start_date              TIMESTAMP WITH TIME ZONE NOT NULL,
     duration                INT NOT NULL,
     name                    TEXT NOT NULL,
     original_language       TEXT NOT NULL,

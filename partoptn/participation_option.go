@@ -216,7 +216,6 @@ func GetAllPartOption(r *ParticipationOptionDB, ctx *gin.Context, skip int, limi
 }
 
 func UpdatePartOptionByName(r *ParticipationOptionDB, ctx *gin.Context, req partOption, name string) error {
-	fmt.Println(req.Name)
 	if req.Name != nil {
 		updateRes, err := r.db.Exec(ctx, `UPDATE participation_option SET name=$1 WHERE name=$2`, req.Name, name)
 		if err != nil {

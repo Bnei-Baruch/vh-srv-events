@@ -216,7 +216,6 @@ func GetAllAudience(r *AudienceDB, ctx *gin.Context, skip int, limit int) (*[]au
 }
 
 func UpdateAudienceByName(r *AudienceDB, ctx *gin.Context, req audience, name string) error {
-	fmt.Println(req.Name)
 	if req.Name != nil {
 		updateRes, err := r.db.Exec(ctx, `UPDATE audience SET name=$1 WHERE name=$2`, req.Name, name)
 		if err != nil {

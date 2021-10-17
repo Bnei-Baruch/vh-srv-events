@@ -216,7 +216,6 @@ func GetAllPlatform(r *PlatformDB, ctx *gin.Context, skip int, limit int) (*[]pl
 }
 
 func UpdatePlatformByName(r *PlatformDB, ctx *gin.Context, req platform, name string) error {
-	fmt.Println(req.Name)
 	if req.Name != nil {
 		updateRes, err := r.db.Exec(ctx, `UPDATE platform SET name=$1 WHERE name=$2`, req.Name, name)
 		if err != nil {
