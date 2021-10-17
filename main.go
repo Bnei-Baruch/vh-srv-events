@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"vh-srv-event/audience"
+	"vh-srv-event/broadcasturl"
 	part "vh-srv-event/participant"
 	partoptn "vh-srv-event/partoptn"
 	"vh-srv-event/platform"
@@ -22,6 +23,7 @@ type Controllers struct {
 	ParticipationOption partoptn.ParticipationOption
 	Platform            platform.Platform
 	Audience            audience.Audience
+	BroadcastURL        broadcasturl.BroadcastURL
 }
 
 // cfg is the struct type that contains fields that stores the necessary configuration
@@ -41,6 +43,7 @@ type Router struct {
 	participationOption partoptn.ParticipationOption
 	platform            platform.Platform
 	audience            audience.Audience
+	broadcastURL        broadcasturl.BroadcastURL
 }
 
 func NewRouter(server *gin.Engine, controller Controllers) *Router {
@@ -50,6 +53,7 @@ func NewRouter(server *gin.Engine, controller Controllers) *Router {
 		controller.ParticipationOption,
 		controller.Platform,
 		controller.Audience,
+		controller.BroadcastURL,
 	}
 }
 func (r *Router) Init() {
@@ -91,6 +95,15 @@ func (r *Router) Init() {
 		audience.GET("/:name", r.audience.GetAudienceByName)
 	}
 	basePath.GET("/audiences", r.audience.GetAllAudience)
+
+	broadcastURL := basePath.Group("/broadcasturl")
+	{
+		broadcastURL.POST("/", r.broadcastURL.CreateNewBroadcastURL)
+		broadcastURL.PATCH("/:id", r.broadcastURL.UpdateBroadcastURLByID)
+		broadcastURL.DELETE("/:id", r.broadcastURL.DeleteBroadcastURLByID)
+		broadcastURL.GET("/:id", r.broadcastURL.GetBroadcastURLByID)
+	}
+	basePath.GET("/broadcasturls", r.broadcastURL.GetAllBroadcastURL)
 }
 
 func main() {
@@ -117,12 +130,14 @@ func main() {
 	participationOption := partoptn.NewParticipationOption(conn)
 	platform := platform.NewPlatform(conn)
 	audience := audience.NewAudience(conn)
+	broadcasturl := broadcasturl.NewBroadcastURL(conn)
 
 	r := NewRouter(route, Controllers{
 		Participant:         participant,
 		ParticipationOption: participationOption,
 		Platform:            platform,
 		Audience:            audience,
+		BroadcastURL:        broadcasturl,
 	})
 
 	r.Init()
