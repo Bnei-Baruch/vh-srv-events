@@ -9,6 +9,7 @@ import (
 
 	"vh-srv-event/audience"
 	"vh-srv-event/broadcasturl"
+	"vh-srv-event/event"
 	"vh-srv-event/item"
 	part "vh-srv-event/participant"
 	partoptn "vh-srv-event/partoptn"
@@ -27,6 +28,7 @@ type Controllers struct {
 	BroadcastURL        broadcasturl.BroadcastURL
 	Item                item.Item
 	ItemBroadcastURL    item.ItemBroadcastURL
+	Event               event.Event
 }
 
 // cfg is the struct type that contains fields that stores the necessary configuration
@@ -49,6 +51,7 @@ type Router struct {
 	broadcastURL        broadcasturl.BroadcastURL
 	item                item.Item
 	itemBroadcastURL    item.ItemBroadcastURL
+	event               event.Event
 }
 
 func NewRouter(server *gin.Engine, controller Controllers) *Router {
@@ -61,6 +64,7 @@ func NewRouter(server *gin.Engine, controller Controllers) *Router {
 		controller.BroadcastURL,
 		controller.Item,
 		controller.ItemBroadcastURL,
+		controller.Event,
 	}
 }
 func (r *Router) Init() {
@@ -129,6 +133,15 @@ func (r *Router) Init() {
 		itemBroadcastUrl.DELETE("/:id", r.itemBroadcastURL.DeleteItemBroadcastURLByID)
 	}
 	basePath.GET("/item-broadcasturls", r.itemBroadcastURL.GetAllItemBroadcastURL)
+
+	event := basePath.Group("/event")
+	{
+		event.POST("/", r.event.CreateNewEvent)
+		event.GET("/:id", r.event.GetEventByID)
+		event.PATCH("/:id", r.event.UpdateEventByID)
+		event.DELETE("/:id", r.event.DeleteEventByID)
+	}
+	basePath.GET("/events", r.event.GetAllEvent)
 }
 
 func main() {
@@ -158,6 +171,7 @@ func main() {
 	broadcasturl := broadcasturl.NewBroadcastURL(conn)
 	itemBroadcastURL := item.NewItemBroadcastURL(conn)
 	item := item.NewItem(conn)
+	event := event.NewEvent(conn)
 
 	r := NewRouter(route, Controllers{
 		Participant:         participant,
@@ -167,6 +181,7 @@ func main() {
 		BroadcastURL:        broadcasturl,
 		Item:                item,
 		ItemBroadcastURL:    itemBroadcastURL,
+		Event:               event,
 	})
 
 	r.Init()
