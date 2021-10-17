@@ -26,6 +26,7 @@ type Controllers struct {
 	Audience            audience.Audience
 	BroadcastURL        broadcasturl.BroadcastURL
 	Item                item.Item
+	ItemBroadcastURL    item.ItemBroadcastURL
 }
 
 // cfg is the struct type that contains fields that stores the necessary configuration
@@ -47,6 +48,7 @@ type Router struct {
 	audience            audience.Audience
 	broadcastURL        broadcasturl.BroadcastURL
 	item                item.Item
+	itemBroadcastURL    item.ItemBroadcastURL
 }
 
 func NewRouter(server *gin.Engine, controller Controllers) *Router {
@@ -58,6 +60,7 @@ func NewRouter(server *gin.Engine, controller Controllers) *Router {
 		controller.Audience,
 		controller.BroadcastURL,
 		controller.Item,
+		controller.ItemBroadcastURL,
 	}
 }
 func (r *Router) Init() {
@@ -117,6 +120,15 @@ func (r *Router) Init() {
 		item.DELETE("/:id", r.item.DeleteItemByID)
 	}
 	basePath.GET("/items", r.item.GetAllItem)
+
+	itemBroadcastUrl := basePath.Group("/item-broadcasturl")
+	{
+		itemBroadcastUrl.POST("/", r.itemBroadcastURL.CreateNewItemBroadcastURL)
+		itemBroadcastUrl.GET("/:id", r.itemBroadcastURL.GetItemBroadcastURLByID)
+		itemBroadcastUrl.PATCH("/:id", r.itemBroadcastURL.UpdateItemBroadcastURLByID)
+		itemBroadcastUrl.DELETE("/:id", r.itemBroadcastURL.DeleteItemBroadcastURLByID)
+	}
+	basePath.GET("/item-broadcasturls", r.itemBroadcastURL.GetAllItemBroadcastURL)
 }
 
 func main() {
@@ -144,6 +156,7 @@ func main() {
 	platform := platform.NewPlatform(conn)
 	audience := audience.NewAudience(conn)
 	broadcasturl := broadcasturl.NewBroadcastURL(conn)
+	itemBroadcastURL := item.NewItemBroadcastURL(conn)
 	item := item.NewItem(conn)
 
 	r := NewRouter(route, Controllers{
@@ -153,6 +166,7 @@ func main() {
 		Audience:            audience,
 		BroadcastURL:        broadcasturl,
 		Item:                item,
+		ItemBroadcastURL:    itemBroadcastURL,
 	})
 
 	r.Init()
