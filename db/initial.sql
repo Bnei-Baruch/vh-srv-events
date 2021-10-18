@@ -486,7 +486,6 @@ CREATE TABLE IF NOT EXISTS item (
     name                    TEXT NOT NULL,
     original_language       TEXT NOT NULL,
     translated              BOOLEAN NOT NULL,
-    broadcast_url_id        INT NOT NULL,
 	created_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
 	updated_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
     CONSTRAINT fk_broadcast_url_id FOREIGN KEY(broadcast_url_id) REFERENCES broadcast_url(id),

@@ -21,7 +21,6 @@ type itemResponse struct {
 	Name             *string    `json:"name" db:"name"`
 	OriginalLanguage *string    `json:"original_language" db:"original_language"`
 	Translated       *bool      `json:"translated" db:"translated"`
-	BoradcastURLID   *int       `json:"broadcast_url_id" db:"broadcast_url_id"`
 	CreatedAt        *time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt        *time.Time `json:"updated_at" db:"updated_at"`
 }
@@ -32,7 +31,6 @@ type item struct {
 	Name             *string    `json:"name" db:"name" validate:"required"`
 	OriginalLanguage *string    `json:"original_language" db:"original_language" validate:"required"`
 	Translated       *bool      `json:"translated" db:"translated" validate:"required"`
-	BoradcastURLID   *int       `json:"broadcast_url_id" db:"broadcast_url_id" validate:"required"`
 }
 
 type Item interface {
@@ -207,7 +205,6 @@ func getItemByID(r *ItemDB, ctx *gin.Context, id string) (itemResponse, error) {
 	name,
 	original_language,
 	translated,
-	broadcast_url_id,
 	created_at,
 	updated_at 
 	from item where id = $1`, id).Scan(
@@ -217,7 +214,6 @@ func getItemByID(r *ItemDB, ctx *gin.Context, id string) (itemResponse, error) {
 		&u.Name,
 		&u.OriginalLanguage,
 		&u.Translated,
-		&u.BoradcastURLID,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 	); err != nil {
@@ -239,13 +235,12 @@ func getAllItem(r *ItemDB, ctx *gin.Context, skip int, limit int) (*[]itemRespon
 	name,
 	original_language,
 	translated,
-	broadcast_url_id,
 	created_at,
 	updated_at 
 	from item LIMIT %d OFFSET %d`, limit, skip))
 	for rows.Next() {
 		var d itemResponse
-		err := rows.Scan(&d.ID, &d.StartDate, &d.Duration, &d.Name, &d.OriginalLanguage, &d.Translated, &d.BoradcastURLID, &d.CreatedAt, &d.UpdatedAt)
+		err := rows.Scan(&d.ID, &d.StartDate, &d.Duration, &d.Name, &d.OriginalLanguage, &d.Translated, &d.CreatedAt, &d.UpdatedAt)
 		if err != nil {
 			return &u, err
 		}
@@ -282,21 +277,18 @@ func createNewItem(r *ItemDB, ctx *gin.Context, req item) error {
 			duration,
 			name,
 			original_language,
-			translated,
-			broadcast_url_id)
+			translated)
 		VALUES (
 			$1,
 			$2,
 			$3,
 			$4,
-			$5,
-			$6)`,
+			$5)`,
 		*req.StartDate,
 		*req.Duration,
 		*req.Name,
 		*req.OriginalLanguage,
-		*req.Translated,
-		*req.BoradcastURLID)
+		*req.Translated)
 
 	return err
 }
@@ -329,10 +321,6 @@ func prepareItemUpdateQuery(req item) (string, []interface{}) {
 	if req.Translated != nil {
 		updateStrings = append(updateStrings, fmt.Sprintf("translated=$%d", len(updateStrings)+1))
 		args = append(args, *req.Translated)
-	}
-	if req.BoradcastURLID != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("broadcast_url_id=$%d", len(updateStrings)+1))
-		args = append(args, *req.BoradcastURLID)
 	}
 
 	if len(args) != 0 {
