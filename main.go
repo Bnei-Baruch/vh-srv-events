@@ -13,6 +13,7 @@ import (
 	"vh-srv-event/item"
 	part "vh-srv-event/participant"
 	partoptn "vh-srv-event/partoptn"
+	"vh-srv-event/partstatus"
 	"vh-srv-event/platform"
 
 	"github.com/gin-gonic/gin"
@@ -30,6 +31,7 @@ type Controllers struct {
 	ItemBroadcastURL    item.ItemBroadcastURL
 	Event               event.Event
 	EventPartOption     event.EventPartOption
+	ParticipationStatus partstatus.ParticipationStatus
 }
 
 // cfg is the struct type that contains fields that stores the necessary configuration
@@ -54,6 +56,7 @@ type Router struct {
 	itemBroadcastURL    item.ItemBroadcastURL
 	event               event.Event
 	eventPartOption     event.EventPartOption
+	participationStatus partstatus.ParticipationStatus
 }
 
 func NewRouter(server *gin.Engine, controller Controllers) *Router {
@@ -68,6 +71,7 @@ func NewRouter(server *gin.Engine, controller Controllers) *Router {
 		controller.ItemBroadcastURL,
 		controller.Event,
 		controller.EventPartOption,
+		controller.ParticipationStatus,
 	}
 }
 func (r *Router) Init() {
@@ -154,6 +158,15 @@ func (r *Router) Init() {
 		eventPartOption.DELETE("/:id", r.eventPartOption.DeleteEventPartOptionByID)
 	}
 	basePath.GET("/event-part-options", r.eventPartOption.GetAllEventPartOption)
+
+	participationStatus := basePath.Group("/participation-status")
+	{
+		participationStatus.POST("/", r.participationStatus.CreateNewParticipationStatus)
+		participationStatus.GET("/:id", r.participationStatus.GetParticipationStatusByID)
+		participationStatus.PATCH("/:id", r.participationStatus.UpdateParticipationStatusByID)
+		participationStatus.DELETE("/:id", r.participationStatus.DeleteParticipationStatusByID)
+	}
+	basePath.GET("/participation-statuses", r.participationStatus.GetAllParticipationStatus)
 }
 
 func main() {
@@ -185,6 +198,7 @@ func main() {
 	item := item.NewItem(conn)
 	eventPartOption := event.NewEventPartOption(conn)
 	event := event.NewEvent(conn)
+	participationStatus := partstatus.NewParticipationStatus(conn)
 
 	r := NewRouter(route, Controllers{
 		Participant:         participant,
@@ -196,6 +210,7 @@ func main() {
 		ItemBroadcastURL:    itemBroadcastURL,
 		Event:               event,
 		EventPartOption:     eventPartOption,
+		ParticipationStatus: participationStatus,
 	})
 
 	r.Init()
