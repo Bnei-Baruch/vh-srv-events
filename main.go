@@ -29,6 +29,7 @@ type Controllers struct {
 	Item                item.Item
 	ItemBroadcastURL    item.ItemBroadcastURL
 	Event               event.Event
+	EventPartOption     event.EventPartOption
 }
 
 // cfg is the struct type that contains fields that stores the necessary configuration
@@ -52,6 +53,7 @@ type Router struct {
 	item                item.Item
 	itemBroadcastURL    item.ItemBroadcastURL
 	event               event.Event
+	eventPartOption     event.EventPartOption
 }
 
 func NewRouter(server *gin.Engine, controller Controllers) *Router {
@@ -65,6 +67,7 @@ func NewRouter(server *gin.Engine, controller Controllers) *Router {
 		controller.Item,
 		controller.ItemBroadcastURL,
 		controller.Event,
+		controller.EventPartOption,
 	}
 }
 func (r *Router) Init() {
@@ -142,6 +145,15 @@ func (r *Router) Init() {
 		event.DELETE("/:id", r.event.DeleteEventByID)
 	}
 	basePath.GET("/events", r.event.GetAllEvent)
+
+	eventPartOption := basePath.Group("/event-part-option")
+	{
+		eventPartOption.POST("/", r.eventPartOption.CreateNewEventPartOption)
+		eventPartOption.GET("/:id", r.eventPartOption.GetEventPartOptionByID)
+		eventPartOption.PATCH("/:id", r.eventPartOption.UpdateEventPartOptionByID)
+		eventPartOption.DELETE("/:id", r.eventPartOption.DeleteEventPartOptionByID)
+	}
+	basePath.GET("/event-part-options", r.eventPartOption.GetAllEventPartOption)
 }
 
 func main() {
@@ -171,6 +183,7 @@ func main() {
 	broadcasturl := broadcasturl.NewBroadcastURL(conn)
 	itemBroadcastURL := item.NewItemBroadcastURL(conn)
 	item := item.NewItem(conn)
+	eventPartOption := event.NewEventPartOption(conn)
 	event := event.NewEvent(conn)
 
 	r := NewRouter(route, Controllers{
@@ -182,6 +195,7 @@ func main() {
 		Item:                item,
 		ItemBroadcastURL:    itemBroadcastURL,
 		Event:               event,
+		EventPartOption:     eventPartOption,
 	})
 
 	r.Init()

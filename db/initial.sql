@@ -542,7 +542,7 @@ CREATE TABLE IF NOT EXISTS participation_status (
     participation_option TEXT NOT NULL,
     participant_id       INT NOT NULL,
     event_id             INT NOT NULL,
-    registration_date    TIMESTAMP WITH TIME ZONE,
+    registration_date    TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT fk_participant_id FOREIGN KEY(participant_id) REFERENCES participant(id),
     CONSTRAINT fk_participation_option_name FOREIGN KEY(participation_option) REFERENCES participation_option(name),
     CONSTRAINT fk_event_id FOREIGN KEY(event_id) REFERENCES event(id)

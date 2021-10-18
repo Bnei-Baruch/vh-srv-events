@@ -25,7 +25,7 @@ type eventResponse struct {
 	Logo                 *string    `json:"logo" db:"logo"`
 	Content              *string    `json:"content" db:"content"`
 	ItemID               *int       `json:"item_id" db:"item_id"`
-	ParticipationOption  *int       `json:"participation_option" db:"participation_option"`
+	ParticipationOption  *string    `json:"participation_option" db:"participation_option"`
 	StartsOn             *time.Time `json:"starts_on" db:"starts_on"`
 	EndsOn               *time.Time `json:"ends_on" db:"ends_on"`
 	DateConfirmed        *bool      `json:"date_confirmed" db:"date_confirmed"`
@@ -43,7 +43,7 @@ type event struct {
 	Logo                 *string    `json:"logo" db:"logo" validate:"required"`
 	Content              *string    `json:"content" db:"content" validate:"required"`
 	ItemID               *int       `json:"item_id" db:"item_id" validate:"required"`
-	ParticipationOption  *int       `json:"participation_option" db:"participation_option" validate:"required"`
+	ParticipationOption  *string    `json:"participation_option" db:"participation_option" validate:"required"`
 	StartsOn             *time.Time `json:"starts_on" db:"starts_on" validate:"required"`
 	EndsOn               *time.Time `json:"ends_on" db:"ends_on" validate:"required"`
 	DateConfirmed        *bool      `json:"date_confirmed" db:"date_confirmed" validate:"required"`
