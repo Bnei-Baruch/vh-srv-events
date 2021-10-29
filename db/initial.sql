@@ -447,7 +447,8 @@ CREATE TABLE IF NOT EXISTS platform (
 );
 
 CREATE TABLE IF NOT EXISTS audience (
-    name TEXT NOT NULL UNIQUE
+    name TEXT NOT NULL UNIQUE, 
+    description TEXT 
 );
 
 CREATE TABLE IF NOT EXISTS participant (
