@@ -505,16 +505,13 @@ CREATE TABLE IF NOT EXISTS item_broadcast_url (
 
 CREATE TABLE IF NOT EXISTS event (
 	id                      SERIAL PRIMARY KEY,
-	participant_id          INT NOT NULL,
 	registration_required   BOOLEAN NOT NULL DEFAULT false,
 	registration_status     TEXT NOT NULL DEFAULT 'open',
 	audience                TEXT NOT NULL DEFAULT 'all',
 	slug                    TEXT NOT NULL,
 	name                    TEXT NOT NULL,
-    logo                    TEXT NOT NULL,
-    content                 JSON NOT NULL,
-    item_id                 INT NOT NULL,
-    participation_option    TEXT NOT NULL,
+    logo                    TEXT,
+    content                 JSON,
 	starts_on               TIMESTAMP WITH TIME ZONE NOT NULL,
 	ends_on                 TIMESTAMP WITH TIME ZONE NOT NULL,
     date_confirmed          BOOLEAN NOT NULL DEFAULT false,
@@ -525,6 +522,17 @@ CREATE TABLE IF NOT EXISTS event (
     CONSTRAINT fk_audience_name FOREIGN KEY(audience) REFERENCES audience(name),
     CONSTRAINT fk_participation_option_name FOREIGN KEY(participation_option) REFERENCES participation_option(name)
 );
+
+CREATE TABLE IF NOT EXISTS event_item (
+    id                      SERIAL PRIMARY KEY,
+    event_id                INT NOT NULL,
+    item_id                 INT NOT NULL,
+    created_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    CONSTRAINT fk_event_id FOREIGN KEY(event_id) REFERENCES event(id),
+    CONSTRAINT fk_event_item_id FOREIGN KEY(item_id) REFERENCES item(id)
+);
+
 
 CREATE TABLE IF NOT EXISTS event_participation_option (
     id                      SERIAL PRIMARY KEY,
