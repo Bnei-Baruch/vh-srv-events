@@ -16,16 +16,13 @@ import (
 
 type eventResponse struct {
 	ID                   *int       `json:"id" db:"id"`
-	ParticipantID        *int       `json:"participant_id" db:"participant_id"`
 	RegistrationRequired *bool      `json:"registration_required" db:"registration_required"`
 	RegistrationStatus   *string    `json:"registration_status" db:"registration_status"`
 	Audience             *string    `json:"audience" db:"audience"`
 	Slug                 *string    `json:"slug" db:"slug"`
 	Name                 *string    `json:"name" db:"name"`
-	Logo                 *string    `json:"logo" db:"logo"`
-	Content              *string    `json:"content" db:"content"`
-	ItemID               *int       `json:"item_id" db:"item_id"`
-	ParticipationOption  *string    `json:"participation_option" db:"participation_option"`
+	Logo                 *string    `json:"logo,omitempty" db:"logo"`
+	Content              *string    `json:"content,omitempty" db:"content"`
 	StartsOn             *time.Time `json:"starts_on" db:"starts_on"`
 	EndsOn               *time.Time `json:"ends_on" db:"ends_on"`
 	DateConfirmed        *bool      `json:"date_confirmed" db:"date_confirmed"`
@@ -34,16 +31,13 @@ type eventResponse struct {
 }
 
 type event struct {
-	ParticipantID        *int       `json:"participant_id" db:"participant_id" validate:"required"`
-	RegistrationRequired *bool      `json:"registration_required" db:"registration_required" validate:"required"`
-	RegistrationStatus   *string    `json:"registration_status" db:"registration_status" validate:"required"`
-	Audience             *string    `json:"audience" db:"audience" validate:"required"`
+	RegistrationRequired *bool      `json:"registration_required" db:"registration_required"`
+	RegistrationStatus   *string    `json:"registration_status" db:"registration_status"`
+	Audience             *string    `json:"audience" db:"audience"`
 	Slug                 *string    `json:"slug" db:"slug" validate:"required"`
 	Name                 *string    `json:"name" db:"name" validate:"required"`
-	Logo                 *string    `json:"logo" db:"logo" validate:"required"`
-	Content              *string    `json:"content" db:"content" validate:"required"`
-	ItemID               *int       `json:"item_id" db:"item_id" validate:"required"`
-	ParticipationOption  *string    `json:"participation_option" db:"participation_option" validate:"required"`
+	Logo                 *string    `json:"logo,omitempty" db:"logo"`
+	Content              *string    `json:"content,omitempty" db:"content"`
 	StartsOn             *time.Time `json:"starts_on" db:"starts_on" validate:"required"`
 	EndsOn               *time.Time `json:"ends_on" db:"ends_on" validate:"required"`
 	DateConfirmed        *bool      `json:"date_confirmed" db:"date_confirmed" validate:"required"`
@@ -70,7 +64,7 @@ func NewEvent(db *pgxpool.Pool) Event {
 func (r *EventDB) GetEventByID(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	u, err := getURLByID(r, ctx, id)
+	u, err := getEventByID(r, ctx, id)
 
 	if err != nil {
 		if err.Error() == "not found" {
@@ -115,7 +109,7 @@ func (r *EventDB) GetAllEvent(ctx *gin.Context) {
 		return
 	}
 
-	u, err := getAllURL(r, ctx, intSkip, intLimit)
+	u, err := getAllEvent(r, ctx, intSkip, intLimit)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -147,7 +141,7 @@ func (r *EventDB) CreateNewEvent(ctx *gin.Context) {
 		return
 	}
 
-	if err := createNewURL(r, ctx, s); err != nil {
+	if err := CreateEvent(r, ctx, s); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"success": false,
@@ -170,7 +164,7 @@ func (r *EventDB) UpdateEventByID(ctx *gin.Context) {
 
 	id := ctx.Param("id")
 
-	if err := updateURLByID(r, ctx, u, id); err != nil {
+	if err := updateEventByID(r, ctx, u, id); err != nil {
 
 		if err.Error() == "not found" {
 			ctx.JSON(http.StatusNotFound, gin.H{
@@ -201,7 +195,7 @@ func (r *EventDB) DeleteEventByID(ctx *gin.Context) {
 
 	id := ctx.Param("id")
 
-	if err := deleteURLByID(r, ctx, id); err != nil {
+	if err := deleteEventByID(r, ctx, id); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"success": false,
@@ -212,11 +206,10 @@ func (r *EventDB) DeleteEventByID(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "Event deleted successfully!", "success": true})
 }
 
-func getURLByID(r *EventDB, ctx *gin.Context, id string) (eventResponse, error) {
+func getEventByID(r *EventDB, ctx *gin.Context, id string) (eventResponse, error) {
 	u := eventResponse{}
 	if err := r.db.QueryRow(ctx, `select 
 	id,
-	participant_id,
 	registration_required,
 	registration_status,
 	audience,
@@ -224,8 +217,6 @@ func getURLByID(r *EventDB, ctx *gin.Context, id string) (eventResponse, error) 
 	name,
 	logo,
 	content,
-	item_id,
-	participation_option,
 	starts_on,
 	ends_on,
 	date_confirmed,
@@ -233,7 +224,6 @@ func getURLByID(r *EventDB, ctx *gin.Context, id string) (eventResponse, error) 
 	updated_at 
 	from event where id = $1`, id).Scan(
 		&u.ID,
-		&u.ParticipantID,
 		&u.RegistrationRequired,
 		&u.RegistrationStatus,
 		&u.Audience,
@@ -241,8 +231,6 @@ func getURLByID(r *EventDB, ctx *gin.Context, id string) (eventResponse, error) 
 		&u.Name,
 		&u.Logo,
 		&u.Content,
-		&u.ItemID,
-		&u.ParticipationOption,
 		&u.StartsOn,
 		&u.EndsOn,
 		&u.DateConfirmed,
@@ -257,12 +245,11 @@ func getURLByID(r *EventDB, ctx *gin.Context, id string) (eventResponse, error) 
 	return u, nil
 }
 
-func getAllURL(r *EventDB, ctx *gin.Context, skip int, limit int) (*[]eventResponse, error) {
+func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int) (*[]eventResponse, error) {
 
 	u := []eventResponse{}
 	rows, _ := r.db.Query(ctx, fmt.Sprintf(`select 
 	id,
-	participant_id,
 	registration_required,
 	registration_status,
 	audience,
@@ -270,8 +257,6 @@ func getAllURL(r *EventDB, ctx *gin.Context, skip int, limit int) (*[]eventRespo
 	name,
 	logo,
 	content,
-	item_id,
-	participation_option,
 	starts_on,
 	ends_on,
 	date_confirmed,
@@ -280,7 +265,7 @@ func getAllURL(r *EventDB, ctx *gin.Context, skip int, limit int) (*[]eventRespo
 	from event LIMIT %d OFFSET %d`, limit, skip))
 	for rows.Next() {
 		var d eventResponse
-		err := rows.Scan(&d.ID, &d.ParticipantID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.ItemID, &d.ParticipationOption, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.CreatedAt, &d.UpdatedAt)
+		err := rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.CreatedAt, &d.UpdatedAt)
 		if err != nil {
 			return &u, err
 		}
@@ -289,7 +274,7 @@ func getAllURL(r *EventDB, ctx *gin.Context, skip int, limit int) (*[]eventRespo
 	return &u, rows.Err()
 }
 
-func updateURLByID(r *EventDB, ctx *gin.Context, req event, id string) error {
+func updateEventByID(r *EventDB, ctx *gin.Context, req event, id string) error {
 
 	toUpdate, toUpdateArgs := prepareEventUpdateQuery(req)
 
@@ -310,54 +295,24 @@ func updateURLByID(r *EventDB, ctx *gin.Context, req event, id string) error {
 	}
 }
 
-func createNewURL(r *EventDB, ctx *gin.Context, req event) error {
-	_, err := r.db.Exec(ctx,
-		`INSERT INTO event (
-			participant_id,
-			registration_required,
-			registration_status,
-			audience,
-			slug,
-			name,
-			logo,
-			content,
-			item_id,
-			participation_option,
-			starts_on,
-			ends_on,
-			date_confirmed)
-		VALUES (
-			$1,
-			$2,
-			$3,
-			$4,
-			$5,
-			$6,
-			$7,
-			$8,
-			$9,
-			$10,
-			$11,
-			$12,
-			$13)  `,
-		*req.ParticipantID,
-		*req.RegistrationRequired,
-		*req.RegistrationStatus,
-		*req.Audience,
-		*req.Slug,
-		*req.Name,
-		*req.Logo,
-		*req.Content,
-		*req.ItemID,
-		*req.ParticipationOption,
-		*req.StartsOn,
-		*req.EndsOn,
-		*req.DateConfirmed)
+func CreateEvent(r *EventDB, ctx *gin.Context, req event) error {
 
-	return err
+	createString, numString, createQueryArgs := prepareEventCreateQuery(req)
+
+	if len(createQueryArgs) != 0 {
+		_, err := r.db.Exec(ctx, fmt.Sprintf(`INSERT INTO event (%s) VALUES (%s)`, createString, numString),
+			createQueryArgs...)
+		if err != nil {
+			return fmt.Errorf("problem creating event: %w", err)
+		}
+
+		return nil
+	} else {
+		return fmt.Errorf("invalid values")
+	}
 }
 
-func deleteURLByID(r *EventDB, ctx context.Context, id string) error {
+func deleteEventByID(r *EventDB, ctx context.Context, id string) error {
 	_, err := r.db.Exec(ctx, "delete from event where id=$1", id)
 	return err
 }
@@ -366,10 +321,6 @@ func prepareEventUpdateQuery(req event) (string, []interface{}) {
 	var updateStrings []string
 	var args []interface{}
 
-	if req.ParticipantID != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("participant_id=$%d", len(updateStrings)+1))
-		args = append(args, *req.ParticipantID)
-	}
 	if req.RegistrationRequired != nil {
 		updateStrings = append(updateStrings, fmt.Sprintf("registration_required=$%d", len(updateStrings)+1))
 		args = append(args, *req.RegistrationRequired)
@@ -398,14 +349,6 @@ func prepareEventUpdateQuery(req event) (string, []interface{}) {
 		updateStrings = append(updateStrings, fmt.Sprintf("content=$%d", len(updateStrings)+1))
 		args = append(args, *req.Content)
 	}
-	if req.ItemID != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("item_id=$%d", len(updateStrings)+1))
-		args = append(args, *req.ItemID)
-	}
-	if req.ParticipationOption != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("participation_option=$%d", len(updateStrings)+1))
-		args = append(args, *req.ParticipationOption)
-	}
 	if req.StartsOn != nil {
 		updateStrings = append(updateStrings, fmt.Sprintf("starts_on=$%d", len(updateStrings)+1))
 		args = append(args, *req.StartsOn)
@@ -427,4 +370,66 @@ func prepareEventUpdateQuery(req event) (string, []interface{}) {
 	updateArgument := strings.Join(updateStrings, ",")
 
 	return updateArgument, args
+}
+
+func prepareEventCreateQuery(req event) (string, string, []interface{}) {
+	var createStrings []string
+	var numString []string
+	var args []interface{}
+
+	if req.RegistrationRequired != nil {
+		createStrings = append(createStrings, "registration_required")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.RegistrationRequired)
+	}
+	if req.RegistrationStatus != nil {
+		createStrings = append(createStrings, "registration_status")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.RegistrationStatus)
+	}
+	if req.Audience != nil {
+		createStrings = append(createStrings, "audience")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Audience)
+	}
+	if req.Slug != nil {
+		createStrings = append(createStrings, "slug")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Slug)
+	}
+	if req.Name != nil {
+		createStrings = append(createStrings, "name")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Name)
+	}
+	if req.Logo != nil {
+		createStrings = append(createStrings, "logo")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Logo)
+	}
+	if req.Content != nil {
+		createStrings = append(createStrings, "content")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Content)
+	}
+	if req.StartsOn != nil {
+		createStrings = append(createStrings, "starts_on")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.StartsOn)
+	}
+	if req.EndsOn != nil {
+		createStrings = append(createStrings, "ends_on")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.EndsOn)
+	}
+	if req.DateConfirmed != nil {
+		createStrings = append(createStrings, "date_confirmed")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.DateConfirmed)
+	}
+
+	concatedCreateString := strings.Join(createStrings, ",")
+	concatedNumString := strings.Join(numString, ",")
+
+	return concatedCreateString, concatedNumString, args
 }

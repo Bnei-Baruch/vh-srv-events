@@ -17,12 +17,12 @@ import (
 type partResponse struct {
 	ID            *int       `json:"id" db:"id"`
 	KeycloakID    *string    `json:"keycloak_id" db:"keycloak_id"`
-	FirstLanguage *string    `json:"first_language" db:"first_language"`
-	EmailLanguage *string    `json:"email_language" db:"email_language"`
-	DOB           *time.Time `json:"dob" db:"dob"`
-	Gender        *string    `json:"gender" db:"gender"`
+	FirstLanguage *string    `json:"first_language,omitempty" db:"first_language"`
+	EmailLanguage *string    `json:"email_language,omitempty" db:"email_language"`
+	DOB           *time.Time `json:"dob,omitempty" db:"dob"`
+	Gender        *string    `json:"gender,omitempty" db:"gender"`
 	Email         *string    `json:"email" db:"email"`
-	Country       *string    `json:"country" db:"country"`
+	Country       *string    `json:"country,omitempty" db:"country"`
 	FirstName     *string    `json:"first_name" db:"first_name"`
 	LastName      *string    `json:"last_name" db:"last_name"`
 	CreatedAt     *time.Time `json:"created_at" db:"created_at"`
@@ -31,12 +31,12 @@ type partResponse struct {
 
 type part struct {
 	KeycloakID    *string    `json:"keycloak_id" db:"keycloak_id" validate:"required"`
-	FirstLanguage *string    `json:"first_language" db:"first_language" validate:"required"`
-	EmailLanguage *string    `json:"email_language" db:"email_language" validate:"required"`
-	DOB           *time.Time `json:"dob" db:"dob" validate:"required"`
-	Gender        *string    `json:"gender" db:"gender" validate:"required"`
+	FirstLanguage *string    `json:"first_language,omitempty" db:"first_language"`
+	EmailLanguage *string    `json:"email_language,omitempty" db:"email_language"`
+	DOB           *time.Time `json:"dob,omitempty" db:"dob"`
+	Gender        *string    `json:"gender,omitempty" db:"gender"`
 	Email         *string    `json:"email" db:"email" validate:"required,email"`
-	Country       *string    `json:"country" db:"country" validate:"required"`
+	Country       *string    `json:"country,omitempty" db:"country"`
 	FirstName     *string    `json:"first_name" db:"first_name" validate:"required"`
 	LastName      *string    `json:"last_name" db:"last_name" validate:"required"`
 }
@@ -290,38 +290,20 @@ func UpdatePartByID(r *ParticipantDB, ctx *gin.Context, req part, id string) err
 }
 
 func CreateNewPart(r *ParticipantDB, ctx *gin.Context, req part) error {
-	_, err := r.db.Exec(ctx,
-		`INSERT INTO participant (
-			keycloak_id,
-			first_language,
-			email_language,
-			dob,
-			gender,
-			email,
-			country,
-			first_name,
-			last_name)
-		VALUES (
-			$1,
-			$2,
-			$3,
-			$4,
-			$5,
-			$6,
-			$7,
-			$8,
-			$9)  `,
-		*req.KeycloakID,
-		*req.FirstLanguage,
-		*req.EmailLanguage,
-		*req.DOB,
-		*req.Gender,
-		*req.Email,
-		*req.Country,
-		*req.FirstName,
-		*req.LastName)
 
-	return err
+	createString, numString, createQueryArgs := prepareParticipantCreateQuery(req)
+
+	if len(createQueryArgs) != 0 {
+		_, err := r.db.Exec(ctx, fmt.Sprintf(`INSERT INTO participant (%s) VALUES (%s)`, createString, numString),
+			createQueryArgs...)
+		if err != nil {
+			return fmt.Errorf("problem creating participant: %w", err)
+		}
+
+		return nil
+	} else {
+		return fmt.Errorf("invalid values")
+	}
 }
 
 func DeletePartByID(r *ParticipantDB, ctx context.Context, id string) error {
@@ -378,4 +360,61 @@ func prepareParticipantUpdateQuery(req part) (string, []interface{}) {
 	updateArgument := strings.Join(updateStrings, ",")
 
 	return updateArgument, args
+}
+
+func prepareParticipantCreateQuery(req part) (string, string, []interface{}) {
+	var createStrings []string
+	var numString []string
+	var args []interface{}
+
+	if req.KeycloakID != nil {
+		createStrings = append(createStrings, "keycloak_id")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.KeycloakID)
+	}
+	if req.FirstLanguage != nil {
+		createStrings = append(createStrings, "first_language")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.FirstLanguage)
+	}
+	if req.EmailLanguage != nil {
+		createStrings = append(createStrings, "email_language")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.EmailLanguage)
+	}
+	if req.DOB != nil {
+		createStrings = append(createStrings, "dob")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.DOB)
+	}
+	if req.Gender != nil {
+		createStrings = append(createStrings, "gender")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Gender)
+	}
+	if req.Email != nil {
+		createStrings = append(createStrings, "email")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Email)
+	}
+	if req.Country != nil {
+		createStrings = append(createStrings, "country")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Country)
+	}
+	if req.FirstName != nil {
+		createStrings = append(createStrings, "first_name")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.FirstName)
+	}
+	if req.LastName != nil {
+		createStrings = append(createStrings, "last_name")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.LastName)
+	}
+
+	concatedCreateString := strings.Join(createStrings, ",")
+	concatedNumString := strings.Join(numString, ",")
+
+	return concatedCreateString, concatedNumString, args
 }

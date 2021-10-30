@@ -19,6 +19,7 @@ type itemResponse struct {
 	StartDate        *time.Time `json:"start_date" db:"start_date"`
 	Duration         *int       `json:"duration" db:"duration"`
 	Name             *string    `json:"name" db:"name"`
+	Content          *string    `json:"content,omitempty" db:"content"`
 	OriginalLanguage *string    `json:"original_language" db:"original_language"`
 	Translated       *bool      `json:"translated" db:"translated"`
 	CreatedAt        *time.Time `json:"created_at" db:"created_at"`
@@ -29,6 +30,7 @@ type item struct {
 	StartDate        *time.Time `json:"start_date" db:"start_date" validate:"required"`
 	Duration         *int       `json:"duration" db:"duration" validate:"required"`
 	Name             *string    `json:"name" db:"name" validate:"required"`
+	Content          *string    `json:"content,omitempty" db:"content"`
 	OriginalLanguage *string    `json:"original_language" db:"original_language" validate:"required"`
 	Translated       *bool      `json:"translated" db:"translated" validate:"required"`
 }
@@ -271,26 +273,19 @@ func updateItemByID(r *ItemDB, ctx *gin.Context, req item, id string) error {
 }
 
 func createNewItem(r *ItemDB, ctx *gin.Context, req item) error {
-	_, err := r.db.Exec(ctx,
-		`INSERT INTO item (
-			start_date,
-			duration,
-			name,
-			original_language,
-			translated)
-		VALUES (
-			$1,
-			$2,
-			$3,
-			$4,
-			$5)`,
-		*req.StartDate,
-		*req.Duration,
-		*req.Name,
-		*req.OriginalLanguage,
-		*req.Translated)
+	createString, numString, createQueryArgs := prepareItemCreateQuery(req)
 
-	return err
+	if len(createQueryArgs) != 0 {
+		_, err := r.db.Exec(ctx, fmt.Sprintf(`INSERT INTO item (%s) VALUES (%s)`, createString, numString),
+			createQueryArgs...)
+		if err != nil {
+			return fmt.Errorf("problem creating item: %w", err)
+		}
+
+		return nil
+	} else {
+		return fmt.Errorf("invalid values")
+	}
 }
 
 func deleteItemByID(r *ItemDB, ctx context.Context, id string) error {
@@ -331,4 +326,46 @@ func prepareItemUpdateQuery(req item) (string, []interface{}) {
 	updateArgument := strings.Join(updateStrings, ",")
 
 	return updateArgument, args
+}
+
+func prepareItemCreateQuery(req item) (string, string, []interface{}) {
+	var createStrings []string
+	var numString []string
+	var args []interface{}
+
+	if req.StartDate != nil {
+		createStrings = append(createStrings, "start_date")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.StartDate)
+	}
+	if req.Duration != nil {
+		createStrings = append(createStrings, "duration")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Duration)
+	}
+	if req.Name != nil {
+		createStrings = append(createStrings, "name")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Name)
+	}
+	if req.Content != nil {
+		createStrings = append(createStrings, "content")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Content)
+	}
+	if req.OriginalLanguage != nil {
+		createStrings = append(createStrings, "original_language")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.OriginalLanguage)
+	}
+	if req.Translated != nil {
+		createStrings = append(createStrings, "translated")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Translated)
+	}
+
+	concatedCreateString := strings.Join(createStrings, ",")
+	concatedNumString := strings.Join(numString, ",")
+
+	return concatedCreateString, concatedNumString, args
 }

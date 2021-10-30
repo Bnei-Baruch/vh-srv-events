@@ -454,12 +454,12 @@ CREATE TABLE IF NOT EXISTS audience (
 CREATE TABLE IF NOT EXISTS participant (
 	id                      SERIAL PRIMARY KEY,
     keycloak_id             TEXT NOT NULL UNIQUE,
-    first_language          TEXT ,
-    email_language          TEXT ,
-    dob                     TIMESTAMP WITH TIME ZONE ,
-    gender                  TEXT ,
+    first_language          TEXT,
+    email_language          TEXT,
+    dob                     TIMESTAMP WITH TIME ZONE,
+    gender                  TEXT,
     email                   TEXT NOT NULL UNIQUE,
-    country                 TEXT ,
+    country                 TEXT,
     first_name              TEXT NOT NULL,
     last_name               TEXT NOT NULL,
 	created_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
@@ -518,10 +518,7 @@ CREATE TABLE IF NOT EXISTS event (
     date_confirmed          BOOLEAN NOT NULL DEFAULT false,
 	created_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
 	updated_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    CONSTRAINT fk_participant_id FOREIGN KEY(participant_id) REFERENCES participant(id),
-    CONSTRAINT fk_item_id FOREIGN KEY(item_id) REFERENCES item(id),
-    CONSTRAINT fk_audience_name FOREIGN KEY(audience) REFERENCES audience(name),
-    CONSTRAINT fk_participation_option_name FOREIGN KEY(participation_option) REFERENCES participation_option(name)
+    CONSTRAINT fk_audience_name FOREIGN KEY(audience) REFERENCES audience(name)
 );
 
 CREATE TABLE IF NOT EXISTS event_item (
@@ -531,7 +528,7 @@ CREATE TABLE IF NOT EXISTS event_item (
     created_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
     updated_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
     CONSTRAINT fk_event_id FOREIGN KEY(event_id) REFERENCES event(id),
-    CONSTRAINT fk_event_item_id FOREIGN KEY(item_id) REFERENCES item(id)
+    CONSTRAINT fk_item_id FOREIGN KEY(item_id) REFERENCES item(id)
 );
 
 
