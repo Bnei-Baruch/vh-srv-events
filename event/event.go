@@ -40,7 +40,7 @@ type event struct {
 	Content              *string    `json:"content,omitempty" db:"content"`
 	StartsOn             *time.Time `json:"starts_on" db:"starts_on" validate:"required"`
 	EndsOn               *time.Time `json:"ends_on" db:"ends_on" validate:"required"`
-	DateConfirmed        *bool      `json:"date_confirmed" db:"date_confirmed" validate:"required"`
+	DateConfirmed        *bool      `json:"date_confirmed" db:"date_confirmed"`
 }
 
 type Event interface {
