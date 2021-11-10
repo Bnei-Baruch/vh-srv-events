@@ -86,6 +86,7 @@ func (r *EventDB) GetEventByID(ctx *gin.Context) {
 func (r *EventDB) GetAllEvent(ctx *gin.Context) {
 	skip := ctx.Query("skip")
 	limit := ctx.Query("limit")
+	slug := ctx.Query("slug")
 
 	if skip == "" {
 		skip = "0"
@@ -109,7 +110,16 @@ func (r *EventDB) GetAllEvent(ctx *gin.Context) {
 		return
 	}
 
-	u, err := getAllEvent(r, ctx, intSkip, intLimit)
+	fetchedEvents, err := getAllEvent(r, ctx, intSkip, intLimit, slug)
+
+	// Manage if no event found
+	if len(*fetchedEvents) == 0 {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"error":   "no event found",
+			"success": false,
+		})
+		return
+	}
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -118,7 +128,7 @@ func (r *EventDB) GetAllEvent(ctx *gin.Context) {
 		})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"message": "Fetched!", "data": u, "success": true})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Fetched!", "data": fetchedEvents, "success": true})
 }
 
 func (r *EventDB) CreateNewEvent(ctx *gin.Context) {
@@ -245,7 +255,9 @@ func getEventByID(r *EventDB, ctx *gin.Context, id string) (eventResponse, error
 	return u, nil
 }
 
-func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int) (*[]eventResponse, error) {
+func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string) (*[]eventResponse, error) {
+
+	whereQuery := buildAndGetWhereEventQuery(slug)
 
 	u := []eventResponse{}
 	rows, _ := r.db.Query(ctx, fmt.Sprintf(`select 
@@ -262,7 +274,7 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int) (*[]eventRes
 	date_confirmed,
 	created_at,
 	updated_at 
-	from event LIMIT %d OFFSET %d`, limit, skip))
+	from event`+whereQuery+" LIMIT %d OFFSET %d", limit, skip))
 	for rows.Next() {
 		var d eventResponse
 		err := rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.CreatedAt, &d.UpdatedAt)
@@ -432,4 +444,24 @@ func prepareEventCreateQuery(req event) (string, string, []interface{}) {
 	concatedNumString := strings.Join(numString, ",")
 
 	return concatedCreateString, concatedNumString, args
+}
+
+func buildAndGetWhereEventQuery(slug string) string {
+
+	var whereString strings.Builder
+	var whereCondition strings.Builder
+	whereString.WriteString(" WHERE")
+	whereCondition.WriteString("")
+
+	// WHERE query generation based on parameters
+	if slug != "" {
+		whereCondition.WriteString(fmt.Sprintf(" slug='%s'", slug))
+	}
+
+	if whereCondition.String() != "" {
+		whereString.WriteString(whereCondition.String())
+	} else {
+		whereString.Reset()
+	}
+	return whereString.String()
 }
