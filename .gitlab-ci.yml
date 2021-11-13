@@ -22,6 +22,12 @@ build_staging:
     - docker push $STAGING_LATEST_IMAGE
   only:
     - master
+  rules:
+    - changes:
+        - docker-compose.yml
+        - .gitlab-ci.yml
+      when: never
+    - when: always
 
 deploy_staging:
   variables: 
