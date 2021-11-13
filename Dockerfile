@@ -14,7 +14,7 @@ FROM alpine:latest
 
 COPY --from=base /app/events /
 
-COPY ./.env /
+#COPY ./.env /
 
 EXPOSE 8080
 
