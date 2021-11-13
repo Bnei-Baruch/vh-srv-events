@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - /opt/srv-events-db:/docker-entrypoint-initdb.d
-  vh-srv-profile:
+  vh-srv-events:
     container_name: 'vh-srv-events'
     environment: 
       DB_NETWORK: "tcp"
