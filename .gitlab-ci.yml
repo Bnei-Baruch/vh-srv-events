@@ -21,6 +21,10 @@ build_staging:
     - docker push $STAGING_IMAGE
     - docker push $STAGING_LATEST_IMAGE
   rules:
+    - changes:
+        - docker-compose.yml
+        - .gitlab-ci.yml
+      when: never
     - if: $CI_COMMIT_REF_NAME == 'master'
       when: always
 
