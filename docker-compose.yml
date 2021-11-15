@@ -12,14 +12,12 @@ services:
   vh-srv-events:
     container_name: 'vh-srv-events'
     environment: 
-      DB_NETWORK: "tcp"
-      DB_USERNAME: ${DB_USER}
+      DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_HOST: "${DB_HOST}"
       PGPORT: ${DB_PORT}
-      DB_NAME: ${DB_DATABASE}
+      DB_DATABASE: ${DB_DATABASE}
       DB_APPNAME: "bbdev"
-      DATABASE_URL: "${DATABASE_URL}"
       APP_PORT: "${APP_PORT}"
       APP_MODE: "${APP_MODE}"
     image: "${IMAGE_NAME}"
