@@ -32,10 +32,10 @@ deploy_staging:
   variables: 
     DB_HOST: "eventsdb"
     DB_PORT: 5432
-    DB_USER: ${DEV_REG_PG_USER}
+    DB_USER: "postgres"
     DB_DATABASE: "event"
     DB_PASSWORD: "password"
-    DATABASE_URL: "postgres://${DEV_REG_PG_USER}:password@eventsdb:5432/${DEV_PROFILE_PG_DBNAME}"
+    DATABASE_URL: "postgres://postgres:password@eventsdb:5432/event"
     APP_PORT: "8080"
     APP_MODE: "dev"
   image: gitlab.bbdev.team:5050/vh/buildutils/buildutil:0.2.0
