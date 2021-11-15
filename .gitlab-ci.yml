@@ -21,10 +21,7 @@ build_staging:
     - docker push $STAGING_IMAGE
     - docker push $STAGING_LATEST_IMAGE
   rules:
-    - if: $CI_COMMIT_REF_NAME != 'master'
-      changes:
-        - *.go
-        - */*.go
+    - if: $CI_COMMIT_REF_NAME == 'master'
       when: always
 
 deploy_staging:
