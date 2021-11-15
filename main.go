@@ -185,6 +185,7 @@ func main() {
 	conn, err := pgxpool.Connect(ctx, databaseURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Connection url: %s", databaseURL)
 		os.Exit(1)
 	}
 	defer conn.Close()
