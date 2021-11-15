@@ -33,7 +33,7 @@ deploy_staging:
     DB_HOST: "eventsdb"
     DB_PORT: 5432
     DB_USER: ${DEV_REG_PG_USER}
-    DB_DATABASE: ${DEV_PROFILE_PG_DBNAME}
+    DB_DATABASE: "event"
     DB_PASSWORD: "password"
     DATABASE_URL: "postgres://${DEV_REG_PG_USER}:password@eventsdb:5432/${DEV_PROFILE_PG_DBNAME}"
     APP_PORT: "8080"
