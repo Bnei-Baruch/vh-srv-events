@@ -23,6 +23,7 @@ type eventResponse struct {
 	Name                 *string    `json:"name" db:"name"`
 	Logo                 *string    `json:"logo,omitempty" db:"logo"`
 	Content              *string    `json:"content,omitempty" db:"content"`
+	Deleted              *bool      `json:"deleted" db:"deleted"`
 	StartsOn             *time.Time `json:"starts_on" db:"starts_on"`
 	EndsOn               *time.Time `json:"ends_on" db:"ends_on"`
 	DateConfirmed        *bool      `json:"date_confirmed" db:"date_confirmed"`
@@ -38,6 +39,7 @@ type event struct {
 	Name                 *string    `json:"name" db:"name" validate:"required"`
 	Logo                 *string    `json:"logo,omitempty" db:"logo"`
 	Content              *string    `json:"content,omitempty" db:"content"`
+	Deleted              *bool      `json:"deleted" db:"deleted"`
 	StartsOn             *time.Time `json:"starts_on" db:"starts_on" validate:"required"`
 	EndsOn               *time.Time `json:"ends_on" db:"ends_on" validate:"required"`
 	DateConfirmed        *bool      `json:"date_confirmed" db:"date_confirmed"`
@@ -49,6 +51,7 @@ type Event interface {
 	CreateNewEvent(ctx *gin.Context)
 	UpdateEventByID(ctx *gin.Context)
 	DeleteEventByID(ctx *gin.Context)
+	DeleteHardEventByID(ctx *gin.Context)
 }
 
 type EventDB struct {
@@ -216,6 +219,21 @@ func (r *EventDB) DeleteEventByID(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "Event deleted successfully!", "success": true})
 }
 
+func (r *EventDB) DeleteHardEventByID(ctx *gin.Context) {
+
+	id := ctx.Param("id")
+
+	if err := deleteHardEventByID(r, ctx, id); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":   err.Error(),
+			"success": false,
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Event deleted successfully!", "success": true})
+}
+
 func getEventByID(r *EventDB, ctx *gin.Context, id string) (eventResponse, error) {
 	u := eventResponse{}
 	if err := r.db.QueryRow(ctx, `select 
@@ -227,6 +245,7 @@ func getEventByID(r *EventDB, ctx *gin.Context, id string) (eventResponse, error
 	name,
 	logo,
 	content,
+	deleted,
 	starts_on,
 	ends_on,
 	date_confirmed,
@@ -241,6 +260,7 @@ func getEventByID(r *EventDB, ctx *gin.Context, id string) (eventResponse, error
 		&u.Name,
 		&u.Logo,
 		&u.Content,
+		&u.Deleted,
 		&u.StartsOn,
 		&u.EndsOn,
 		&u.DateConfirmed,
@@ -269,6 +289,7 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string)
 	name,
 	logo,
 	content,
+	deleted,
 	starts_on,
 	ends_on,
 	date_confirmed,
@@ -277,7 +298,7 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string)
 	from event`+whereQuery+" LIMIT %d OFFSET %d", limit, skip))
 	for rows.Next() {
 		var d eventResponse
-		err := rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.CreatedAt, &d.UpdatedAt)
+		err := rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.Deleted, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.CreatedAt, &d.UpdatedAt)
 		if err != nil {
 			return &u, err
 		}
@@ -325,6 +346,14 @@ func CreateEvent(r *EventDB, ctx *gin.Context, req event) error {
 }
 
 func deleteEventByID(r *EventDB, ctx context.Context, id string) error {
+	_, err := r.db.Exec(ctx, `	UPDATE event SET deleted = true;
+								UPDATE event_item SET deleted = true;
+								UPDATE event_participation_option SET deleted = true;
+								UPDATE participation_status SET deleted = true;`)
+	return err
+}
+
+func deleteHardEventByID(r *EventDB, ctx context.Context, id string) error {
 	_, err := r.db.Exec(ctx, "delete from event where id=$1", id)
 	return err
 }
@@ -360,6 +389,10 @@ func prepareEventUpdateQuery(req event) (string, []interface{}) {
 	if req.Content != nil {
 		updateStrings = append(updateStrings, fmt.Sprintf("content=$%d", len(updateStrings)+1))
 		args = append(args, *req.Content)
+	}
+	if req.Deleted != nil {
+		updateStrings = append(updateStrings, fmt.Sprintf("deleted=$%d", len(updateStrings)+1))
+		args = append(args, *req.Deleted)
 	}
 	if req.StartsOn != nil {
 		updateStrings = append(updateStrings, fmt.Sprintf("starts_on=$%d", len(updateStrings)+1))
@@ -423,6 +456,11 @@ func prepareEventCreateQuery(req event) (string, string, []interface{}) {
 		createStrings = append(createStrings, "content")
 		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
 		args = append(args, *req.Content)
+	}
+	if req.Deleted != nil {
+		createStrings = append(createStrings, "deleted")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Deleted)
 	}
 	if req.StartsOn != nil {
 		createStrings = append(createStrings, "starts_on")

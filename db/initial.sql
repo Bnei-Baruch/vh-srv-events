@@ -513,6 +513,7 @@ CREATE TABLE IF NOT EXISTS event (
 	name                    TEXT NOT NULL,
     logo                    TEXT,
     content                 JSON,
+    deleted                 BOOLEAN DEFAULT false,
 	starts_on               TIMESTAMP WITH TIME ZONE NOT NULL,
 	ends_on                 TIMESTAMP WITH TIME ZONE NOT NULL,
     date_confirmed          BOOLEAN NOT NULL DEFAULT false,
@@ -525,9 +526,10 @@ CREATE TABLE IF NOT EXISTS event_item (
     id                      SERIAL PRIMARY KEY,
     event_id                INT NOT NULL,
     item_id                 INT NOT NULL,
+    deleted                 BOOLEAN DEFAULT false,
     created_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
     updated_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    CONSTRAINT fk_event_id FOREIGN KEY(event_id) REFERENCES event(id),
+    CONSTRAINT fk_event_id FOREIGN KEY(event_id) REFERENCES event(id) ON DELETE CASCADE,
     CONSTRAINT fk_item_id FOREIGN KEY(item_id) REFERENCES item(id)
 );
 
@@ -536,9 +538,10 @@ CREATE TABLE IF NOT EXISTS event_participation_option (
     id                      SERIAL PRIMARY KEY,
     event_id                INT NOT NULL,
     participation_option    TEXT NOT NULL,
+    deleted                 BOOLEAN DEFAULT false,
     created_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
     updated_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    CONSTRAINT fk_event_id FOREIGN KEY(event_id) REFERENCES event(id),
+    CONSTRAINT fk_event_id FOREIGN KEY(event_id) REFERENCES event(id) ON DELETE CASCADE,
     CONSTRAINT fk_participation_option_id FOREIGN KEY(participation_option) REFERENCES participation_option(name)
 );
 
@@ -547,11 +550,14 @@ CREATE TABLE IF NOT EXISTS participation_status (
     participation_option TEXT NOT NULL,
     participant_id       INT NOT NULL,
     event_id             INT NOT NULL,
-    confirmed   BOOLEAN NOT NULL DEFAULT false,
+    deleted              BOOLEAN DEFAULT false,
+    confirmed            BOOLEAN NOT NULL DEFAULT false,
     registration_date    TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at           TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at           TIMESTAMP WITH TIME ZONE DEFAULT now(),
     CONSTRAINT fk_participant_id FOREIGN KEY(participant_id) REFERENCES participant(id),
     CONSTRAINT fk_participation_option_name FOREIGN KEY(participation_option) REFERENCES participation_option(name),
-    CONSTRAINT fk_event_id FOREIGN KEY(event_id) REFERENCES event(id)
+    CONSTRAINT fk_event_id FOREIGN KEY(event_id) REFERENCES event(id)  ON DELETE CASCADE
 );
 
 COMMIT;
