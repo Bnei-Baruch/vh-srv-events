@@ -19,7 +19,9 @@ type participationStatusResponse struct {
 	ParticipationOption *string    `json:"participation_option" db:"participation_option"`
 	ParticipantID       *int       `json:"participant_id" db:"participant_id"`
 	EventID             *int       `json:"event_id" db:"event_id"`
+	Confirmed           *bool      `json:"confirmed" db:"confirmed"`
 	RegistrationDate    *time.Time `json:"registration_date" db:"registration_date"`
+	Deleted             *bool      `json:"deleted" db:"deleted"`
 	CreatedAt           *time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt           *time.Time `json:"updated_at" db:"updated_at"`
 }
@@ -28,7 +30,9 @@ type participationStatus struct {
 	ParticipationOption *string    `json:"participation_option" db:"participation_option" validate:"required"`
 	ParticipantID       *int       `json:"participant_id" db:"participant_id" validate:"required"`
 	EventID             *int       `json:"event_id" db:"event_id" validate:"required"`
+	Confirmed           *bool      `json:"confirmed" db:"confirmed"`
 	RegistrationDate    *time.Time `json:"registration_date" db:"registration_date" validate:"required"`
+	Deleted             *bool      `json:"deleted" db:"deleted"`
 }
 
 type ParticipationStatus interface {
@@ -201,7 +205,9 @@ func getParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, id s
 	participation_option,
 	participant_id,
 	event_id,
+	confirmed,
 	registration_date,
+	deleted,
 	created_at,
 	updated_at 
 	from participation_status where id = $1`, id).Scan(
@@ -209,7 +215,9 @@ func getParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, id s
 		&u.ParticipationOption,
 		&u.ParticipantID,
 		&u.EventID,
+		&u.Confirmed,
 		&u.RegistrationDate,
+		&u.Deleted,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 	); err != nil {
@@ -229,13 +237,15 @@ func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip 
 	participation_option,
 	participant_id,
 	event_id,
+	confirmed,
 	registration_date,
+	deleted,
 	created_at,
 	updated_at 
 	from participation_status LIMIT %d OFFSET %d`, limit, skip))
 	for rows.Next() {
 		var d participationStatusResponse
-		err := rows.Scan(&d.ID, &d.ParticipationOption, &d.ParticipantID, &d.EventID, &d.RegistrationDate, &d.CreatedAt, &d.UpdatedAt)
+		err := rows.Scan(&d.ID, &d.ParticipationOption, &d.ParticipantID, &d.EventID, &d.Confirmed, &d.RegistrationDate, &d.Deleted, &d.CreatedAt, &d.UpdatedAt)
 		if err != nil {
 			return &u, err
 		}
@@ -266,23 +276,20 @@ func updateParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, r
 }
 
 func createNewParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, req participationStatus) error {
-	_, err := r.db.Exec(ctx,
-		`INSERT INTO participation_status (
-			participation_option,
-			participant_id,
-			event_id,
-			registration_date,)
-		VALUES (
-			$1,
-			$2,
-			$3,
-			$4)  `,
-		*req.ParticipationOption,
-		*req.ParticipantID,
-		*req.EventID,
-		*req.RegistrationDate)
 
-	return err
+	createString, numString, createQueryArgs := prepareParticipationStatusCreateQuery(req)
+
+	if len(createQueryArgs) != 0 {
+		_, err := r.db.Exec(ctx, fmt.Sprintf(`INSERT INTO participation_status (%s) VALUES (%s)`, createString, numString),
+			createQueryArgs...)
+		if err != nil {
+			return fmt.Errorf("problem creating event item: %w", err)
+		}
+
+		return nil
+	} else {
+		return fmt.Errorf("invalid values")
+	}
 }
 
 func deleteParticipationStatusByID(r *ParticipationStatusDB, ctx context.Context, id string) error {
@@ -306,11 +313,18 @@ func prepareParticipationStatusUpdateQuery(req participationStatus) (string, []i
 		updateStrings = append(updateStrings, fmt.Sprintf("event_id=$%d", len(updateStrings)+1))
 		args = append(args, *req.EventID)
 	}
+	if req.Confirmed != nil {
+		updateStrings = append(updateStrings, fmt.Sprintf("confirmed=$%d", len(updateStrings)+1))
+		args = append(args, *req.Confirmed)
+	}
 	if req.RegistrationDate != nil {
 		updateStrings = append(updateStrings, fmt.Sprintf("registration_date=$%d", len(updateStrings)+1))
 		args = append(args, *req.RegistrationDate)
 	}
-
+	if req.Deleted != nil {
+		updateStrings = append(updateStrings, fmt.Sprintf("deleted=$%d", len(updateStrings)+1))
+		args = append(args, *req.Deleted)
+	}
 	if len(args) != 0 {
 		updateStrings = append(updateStrings, fmt.Sprintf("updated_at=$%d", len(updateStrings)+1))
 		args = append(args, time.Now())
@@ -319,4 +333,46 @@ func prepareParticipationStatusUpdateQuery(req participationStatus) (string, []i
 	updateArgument := strings.Join(updateStrings, ",")
 
 	return updateArgument, args
+}
+
+func prepareParticipationStatusCreateQuery(req participationStatus) (string, string, []interface{}) {
+	var createStrings []string
+	var numString []string
+	var args []interface{}
+
+	if req.ParticipationOption != nil {
+		createStrings = append(createStrings, "participation_option")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.ParticipationOption)
+	}
+	if req.ParticipantID != nil {
+		createStrings = append(createStrings, "participant_id")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.ParticipantID)
+	}
+	if req.EventID != nil {
+		createStrings = append(createStrings, "event_id")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.EventID)
+	}
+	if req.Confirmed != nil {
+		createStrings = append(createStrings, "confirmed")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Confirmed)
+	}
+	if req.RegistrationDate != nil {
+		createStrings = append(createStrings, "registration_date")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.RegistrationDate)
+	}
+	if req.Deleted != nil {
+		createStrings = append(createStrings, "deleted")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Deleted)
+	}
+
+	concatedCreateString := strings.Join(createStrings, ",")
+	concatedNumString := strings.Join(numString, ",")
+
+	return concatedCreateString, concatedNumString, args
 }

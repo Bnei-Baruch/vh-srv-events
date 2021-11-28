@@ -16,15 +16,17 @@ import (
 
 type eventItemResponse struct {
 	ID        *int       `json:"id" db:"id"`
-	EventID   *string    `json:"event_id" db:"event_id"`
-	ItemID    *string    `json:"item_id" db:"item_id"`
+	EventID   *int       `json:"event_id" db:"event_id"`
+	ItemID    *int       `json:"item_id" db:"item_id"`
+	Deleted   *bool      `json:"deleted" db:"deleted"`
 	CreatedAt *time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt *time.Time `json:"updated_at" db:"updated_at"`
 }
 
 type eventItem struct {
-	EventID *string `json:"event_id" db:"event_id" validate:"required"`
-	ItemID  *string `json:"item_id" db:"item_id" validate:"required"`
+	EventID *int  `json:"event_id" db:"event_id" validate:"required"`
+	ItemID  *int  `json:"item_id" db:"item_id" validate:"required"`
+	Deleted *bool `json:"deleted" db:"deleted"`
 }
 
 type EventItem interface {
@@ -196,12 +198,14 @@ func getEventItemByID(r *EventItemDB, ctx *gin.Context, id string) (eventItemRes
 	id,
 	event_id,
 	item_id,
+	deleted,
 	created_at,
 	updated_at 
 	from event_item where id = $1`, id).Scan(
 		&u.ID,
 		&u.EventID,
-		&u.ID,
+		&u.ItemID,
+		&u.Deleted,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 	); err != nil {
@@ -220,12 +224,13 @@ func getAllEventItem(r *EventItemDB, ctx *gin.Context, skip int, limit int) (*[]
 	id,
 	event_id,
 	item_id,
+	deleted,
 	created_at,
 	updated_at 
 	from event_item LIMIT %d OFFSET %d`, limit, skip))
 	for rows.Next() {
 		var d eventItemResponse
-		err := rows.Scan(&d.ID, &d.EventID, &d.ItemID, &d.CreatedAt, &d.UpdatedAt)
+		err := rows.Scan(&d.ID, &d.EventID, &d.ItemID, &d.Deleted, &d.CreatedAt, &d.UpdatedAt)
 		if err != nil {
 			return &u, err
 		}
@@ -256,18 +261,20 @@ func updateEventItemByID(r *EventItemDB, ctx *gin.Context, req eventItem, id str
 }
 
 func createNewEventItem(r *EventItemDB, ctx *gin.Context, req eventItem) error {
-	_, err := r.db.Exec(ctx,
-		`INSERT INTO event_item (
-			event_id,
-			item_id)
-		VALUES (
-			$1,
-			$2,
-			$3)  `,
-		*req.EventID,
-		*req.ItemID)
 
-	return err
+	createString, numString, createQueryArgs := prepareEventItemCreateQuery(req)
+
+	if len(createQueryArgs) != 0 {
+		_, err := r.db.Exec(ctx, fmt.Sprintf(`INSERT INTO event_item (%s) VALUES (%s)`, createString, numString),
+			createQueryArgs...)
+		if err != nil {
+			return fmt.Errorf("problem creating event item: %w", err)
+		}
+
+		return nil
+	} else {
+		return fmt.Errorf("invalid values")
+	}
 }
 
 func deleteEventItemByID(r *EventItemDB, ctx context.Context, id string) error {
@@ -296,4 +303,31 @@ func prepareEventItemUpdateQuery(req eventItem) (string, []interface{}) {
 	updateArgument := strings.Join(updateStrings, ",")
 
 	return updateArgument, args
+}
+
+func prepareEventItemCreateQuery(req eventItem) (string, string, []interface{}) {
+	var createStrings []string
+	var numString []string
+	var args []interface{}
+
+	if req.EventID != nil {
+		createStrings = append(createStrings, "event_id")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.EventID)
+	}
+	if req.ItemID != nil {
+		createStrings = append(createStrings, "item_id")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.ItemID)
+	}
+	if req.Deleted != nil {
+		createStrings = append(createStrings, "deleted")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Deleted)
+	}
+
+	concatedCreateString := strings.Join(createStrings, ",")
+	concatedNumString := strings.Join(numString, ",")
+
+	return concatedCreateString, concatedNumString, args
 }

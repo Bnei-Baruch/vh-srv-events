@@ -18,6 +18,7 @@ type eventPartOptionResponse struct {
 	ID                  *int       `json:"id" db:"id"`
 	EventID             *int       `json:"event_id" db:"event_id"`
 	ParticipationOption *string    `json:"participation_option" db:"participation_option"`
+	Deleted             *bool      `json:"deleted" db:"deleted"`
 	CreatedAt           *time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt           *time.Time `json:"updated_at" db:"updated_at"`
 }
@@ -25,6 +26,7 @@ type eventPartOptionResponse struct {
 type eventPartOption struct {
 	EventID             *int    `json:"event_id" db:"event_id" validate:"required"`
 	ParticipationOption *string `json:"participation_option" db:"participation_option" validate:"required"`
+	Deleted             *bool   `json:"deleted" db:"deleted"`
 }
 
 type EventPartOption interface {
@@ -196,12 +198,14 @@ func getEventPartOptionByID(r *EventPartOptionDB, ctx *gin.Context, id string) (
 	id,
 	event_id,
 	participation_option,
+	deleted,
 	created_at,
 	updated_at 
 	from event_participation_option where id = $1`, id).Scan(
 		&u.ID,
 		&u.EventID,
 		&u.ParticipationOption,
+		&u.Deleted,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 	); err != nil {
@@ -220,12 +224,13 @@ func getAllEventPartOption(r *EventPartOptionDB, ctx *gin.Context, skip int, lim
 	id,
 	event_id,
 	participation_option,
+	deleted,
 	created_at,
 	updated_at 
 	from event_participation_option LIMIT %d OFFSET %d`, limit, skip))
 	for rows.Next() {
 		var d eventPartOptionResponse
-		err := rows.Scan(&d.ID, &d.EventID, &d.ParticipationOption, &d.CreatedAt, &d.UpdatedAt)
+		err := rows.Scan(&d.ID, &d.EventID, &d.ParticipationOption, &d.Deleted, &d.CreatedAt, &d.UpdatedAt)
 		if err != nil {
 			return &u, err
 		}
@@ -256,17 +261,20 @@ func updateEventPartOptionByID(r *EventPartOptionDB, ctx *gin.Context, req event
 }
 
 func createNewEventPartOption(r *EventPartOptionDB, ctx *gin.Context, req eventPartOption) error {
-	_, err := r.db.Exec(ctx,
-		`INSERT INTO event_participation_option (
-			event_id,
-	participation_option)
-		VALUES (
-			$1,
-			$2)  `,
-		*req.EventID,
-		*req.ParticipationOption)
 
-	return err
+	createString, numString, createQueryArgs := prepareEventPartOptionCreateQuery(req)
+
+	if len(createQueryArgs) != 0 {
+		_, err := r.db.Exec(ctx, fmt.Sprintf(`INSERT INTO event_participation_option (%s) VALUES (%s)`, createString, numString),
+			createQueryArgs...)
+		if err != nil {
+			return fmt.Errorf("problem creating event item: %w", err)
+		}
+
+		return nil
+	} else {
+		return fmt.Errorf("invalid values")
+	}
 }
 
 func deleteEventPartOptionByID(r *EventPartOptionDB, ctx context.Context, id string) error {
@@ -286,6 +294,10 @@ func prepareEventPartOptionUpdateQuery(req eventPartOption) (string, []interface
 		updateStrings = append(updateStrings, fmt.Sprintf("participation_option=$%d", len(updateStrings)+1))
 		args = append(args, *req.ParticipationOption)
 	}
+	if req.Deleted != nil {
+		updateStrings = append(updateStrings, fmt.Sprintf("deleted=$%d", len(updateStrings)+1))
+		args = append(args, *req.Deleted)
+	}
 
 	if len(args) != 0 {
 		updateStrings = append(updateStrings, fmt.Sprintf("updated_at=$%d", len(updateStrings)+1))
@@ -295,4 +307,31 @@ func prepareEventPartOptionUpdateQuery(req eventPartOption) (string, []interface
 	updateArgument := strings.Join(updateStrings, ",")
 
 	return updateArgument, args
+}
+
+func prepareEventPartOptionCreateQuery(req eventPartOption) (string, string, []interface{}) {
+	var createStrings []string
+	var numString []string
+	var args []interface{}
+
+	if req.EventID != nil {
+		createStrings = append(createStrings, "event_id")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.EventID)
+	}
+	if req.ParticipationOption != nil {
+		createStrings = append(createStrings, "participation_option")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.ParticipationOption)
+	}
+	if req.Deleted != nil {
+		createStrings = append(createStrings, "deleted")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Deleted)
+	}
+
+	concatedCreateString := strings.Join(createStrings, ",")
+	concatedNumString := strings.Join(numString, ",")
+
+	return concatedCreateString, concatedNumString, args
 }

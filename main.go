@@ -30,6 +30,7 @@ type Controllers struct {
 	Item                item.Item
 	ItemBroadcastURL    item.ItemBroadcastURL
 	Event               event.Event
+	EventItem           event.EventItem
 	EventPartOption     event.EventPartOption
 	ParticipationStatus partstatus.ParticipationStatus
 }
@@ -55,6 +56,7 @@ type Router struct {
 	item                item.Item
 	itemBroadcastURL    item.ItemBroadcastURL
 	event               event.Event
+	eventItem           event.EventItem
 	eventPartOption     event.EventPartOption
 	participationStatus partstatus.ParticipationStatus
 }
@@ -70,6 +72,7 @@ func NewRouter(server *gin.Engine, controller Controllers) *Router {
 		controller.Item,
 		controller.ItemBroadcastURL,
 		controller.Event,
+		controller.EventItem,
 		controller.EventPartOption,
 		controller.ParticipationStatus,
 	}
@@ -147,8 +150,18 @@ func (r *Router) Init() {
 		event.GET("/:id", r.event.GetEventByID)
 		event.PATCH("/:id", r.event.UpdateEventByID)
 		event.DELETE("/:id", r.event.DeleteEventByID)
+		event.DELETE("/hard/:id", r.event.DeleteHardEventByID)
 	}
 	basePath.GET("/events", r.event.GetAllEvent)
+
+	eventItem := basePath.Group("/event-item")
+	{
+		eventItem.POST("/", r.eventItem.CreateNewEventItem)
+		eventItem.GET("/:id", r.eventItem.GetEventItemByID)
+		eventItem.PATCH("/:id", r.eventItem.UpdateEventItemByID)
+		eventItem.DELETE("/:id", r.eventItem.DeleteEventItemByID)
+	}
+	basePath.GET("/event-items", r.eventItem.GetAllEventItem)
 
 	eventPartOption := basePath.Group("/event-part-option")
 	{
@@ -198,6 +211,7 @@ func main() {
 	itemBroadcastURL := item.NewItemBroadcastURL(conn)
 	item := item.NewItem(conn)
 	eventPartOption := event.NewEventPartOption(conn)
+	eventItem := event.NewEventItem(conn)
 	event := event.NewEvent(conn)
 	participationStatus := partstatus.NewParticipationStatus(conn)
 
@@ -210,6 +224,7 @@ func main() {
 		Item:                item,
 		ItemBroadcastURL:    itemBroadcastURL,
 		Event:               event,
+		EventItem:           eventItem,
 		EventPartOption:     eventPartOption,
 		ParticipationStatus: participationStatus,
 	})
