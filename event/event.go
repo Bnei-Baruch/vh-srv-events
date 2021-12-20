@@ -346,10 +346,12 @@ func CreateEvent(r *EventDB, ctx *gin.Context, req event) error {
 }
 
 func deleteEventByID(r *EventDB, ctx context.Context, id string) error {
-	_, err := r.db.Exec(ctx, `	UPDATE event SET deleted = true;
-								UPDATE event_item SET deleted = true;
-								UPDATE event_participation_option SET deleted = true;
-								UPDATE participation_status SET deleted = true;`)
+
+	eventQuery := "UPDATE event SET deleted = true WHERE id=" + id + ";"
+	eventItemQuery := "UPDATE event_item SET deleted = true WHERE event_id=" + id + ";"
+	eventPartQuery := "UPDATE event_participation_option SET deleted = true WHERE event_id=" + id + ";"
+	eventStatusQuery := "UPDATE participation_status SET deleted = true WHERE event_id=" + id + ";"
+	_, err := r.db.Exec(ctx, eventQuery+eventItemQuery+eventPartQuery+eventStatusQuery)
 	return err
 }
 
