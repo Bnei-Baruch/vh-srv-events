@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -13,11 +14,13 @@ import (
 )
 
 type audienceResponse struct {
-	Name *string `json:"name" db:"name"`
+	Name        *string `json:"name" db:"name"`
+	Description *string `json:"description,omitempty" db:"description"`
 }
 
 type audience struct {
-	Name *string `json:"Name" db:"Name" validate:"required"`
+	Name        *string `json:"Name" db:"Name" validate:"required"`
+	Description *string `json:"description,omitempty" db:"description"`
 }
 
 type Audience interface {
@@ -186,9 +189,10 @@ func (r *AudienceDB) DeleteAudienceByName(ctx *gin.Context) {
 func getAudienceByName(r *AudienceDB, ctx *gin.Context, name string) (audienceResponse, error) {
 	u := audienceResponse{}
 	if err := r.db.QueryRow(ctx, `select 
-	name 
+	name, description  
 	from audience where name = $1`, name).Scan(
 		&u.Name,
+		&u.Description,
 	); err != nil {
 		if err == pgx.ErrNoRows {
 			return audienceResponse{}, fmt.Errorf("not found")
@@ -202,11 +206,11 @@ func GetAllAudience(r *AudienceDB, ctx *gin.Context, skip int, limit int) (*[]au
 
 	u := []audienceResponse{}
 	rows, _ := r.db.Query(ctx, fmt.Sprintf(`select 
-	name 
+	name, description 
 	from audience LIMIT %d OFFSET %d`, limit, skip))
 	for rows.Next() {
 		var d audienceResponse
-		err := rows.Scan(&d.Name)
+		err := rows.Scan(&d.Name, &d.Description)
 		if err != nil {
 			return &u, err
 		}
@@ -216,8 +220,12 @@ func GetAllAudience(r *AudienceDB, ctx *gin.Context, skip int, limit int) (*[]au
 }
 
 func UpdateAudienceByName(r *AudienceDB, ctx *gin.Context, req audience, name string) error {
-	if req.Name != nil {
-		updateRes, err := r.db.Exec(ctx, `UPDATE audience SET name=$1 WHERE name=$2`, req.Name, name)
+
+	toUpdate, toUpdateArgs := prepareAudienceUpdateQuery(req)
+
+	if len(toUpdateArgs) != 0 {
+		updateRes, err := r.db.Exec(ctx, fmt.Sprintf(`UPDATE audience SET %s WHERE name=%s`, toUpdate, name),
+			toUpdateArgs...)
 		if err != nil {
 			return fmt.Errorf("problem updating audience: %w", err)
 		}
@@ -233,17 +241,63 @@ func UpdateAudienceByName(r *AudienceDB, ctx *gin.Context, req audience, name st
 }
 
 func CreateNewAudience(r *AudienceDB, ctx *gin.Context, req audience) error {
-	_, err := r.db.Exec(ctx,
-		`INSERT INTO audience (
-			name)
-		VALUES (
-			$1)  `,
-		*req.Name)
 
-	return err
+	createString, numString, createQueryArgs := prepareAudienceCreateQuery(req)
+
+	if len(createQueryArgs) != 0 {
+		_, err := r.db.Exec(ctx, fmt.Sprintf(`INSERT INTO audience (%s) VALUES (%s)`, createString, numString),
+			createQueryArgs...)
+		if err != nil {
+			return fmt.Errorf("problem creating item: %w", err)
+		}
+
+		return nil
+	} else {
+		return fmt.Errorf("invalid values")
+	}
 }
 
 func DeleteAudienceByName(r *AudienceDB, ctx context.Context, name string) error {
 	_, err := r.db.Exec(ctx, "delete from audience where name=$1", name)
 	return err
+}
+
+func prepareAudienceUpdateQuery(req audience) (string, []interface{}) {
+	var updateStrings []string
+	var args []interface{}
+
+	if req.Name != nil {
+		updateStrings = append(updateStrings, fmt.Sprintf("name=$%d", len(updateStrings)+1))
+		args = append(args, *req.Name)
+	}
+	if req.Description != nil {
+		updateStrings = append(updateStrings, fmt.Sprintf("description=$%d", len(updateStrings)+1))
+		args = append(args, *req.Description)
+	}
+
+	updateArgument := strings.Join(updateStrings, ",")
+
+	return updateArgument, args
+}
+
+func prepareAudienceCreateQuery(req audience) (string, string, []interface{}) {
+	var createStrings []string
+	var numString []string
+	var args []interface{}
+
+	if req.Name != nil {
+		createStrings = append(createStrings, "name")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Name)
+	}
+	if req.Description != nil {
+		createStrings = append(createStrings, "description")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Description)
+	}
+
+	concatedCreateString := strings.Join(createStrings, ",")
+	concatedNumString := strings.Join(numString, ",")
+
+	return concatedCreateString, concatedNumString, args
 }
