@@ -283,7 +283,7 @@ func createNewParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, re
 		_, err := r.db.Exec(ctx, fmt.Sprintf(`INSERT INTO participation_status (%s) VALUES (%s)`, createString, numString),
 			createQueryArgs...)
 		if err != nil {
-			return fmt.Errorf("problem creating event item: %w", err)
+			return fmt.Errorf("problem creating participation status: %w", err)
 		}
 
 		return nil
