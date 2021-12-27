@@ -268,7 +268,7 @@ func createNewEventPartOption(r *EventPartOptionDB, ctx *gin.Context, req eventP
 		_, err := r.db.Exec(ctx, fmt.Sprintf(`INSERT INTO event_participation_option (%s) VALUES (%s)`, createString, numString),
 			createQueryArgs...)
 		if err != nil {
-			return fmt.Errorf("problem creating event item: %w", err)
+			return fmt.Errorf("problem creating participation status: %w", err)
 		}
 
 		return nil
