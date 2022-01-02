@@ -126,7 +126,7 @@ func (r *ParticipationOptionDB) CreateNewParticipationOption(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Created new participation option!", "data": s, "success": true})
+	ctx.JSON(http.StatusCreated, gin.H{"message": "Created new participation option!", "data": s, "success": true})
 }
 
 func (r *ParticipationOptionDB) UpdateParticipationOptionByName(ctx *gin.Context) {

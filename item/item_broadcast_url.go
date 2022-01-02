@@ -133,7 +133,7 @@ func (r *ItemBroadcastURLDB) CreateNewItemBroadcastURL(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Created new Item BroadcastURL!", "data": s, "success": true})
+	ctx.JSON(http.StatusCreated, gin.H{"message": "Created new Item BroadcastURL!", "data": s, "success": true})
 }
 
 func (r *ItemBroadcastURLDB) UpdateItemBroadcastURLByID(ctx *gin.Context) {

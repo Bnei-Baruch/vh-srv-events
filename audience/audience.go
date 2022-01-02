@@ -129,7 +129,7 @@ func (r *AudienceDB) CreateNewAudience(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Created new audience!", "data": s, "success": true})
+	ctx.JSON(http.StatusCreated, gin.H{"message": "Created new audience!", "data": s, "success": true})
 }
 
 func (r *AudienceDB) UpdateAudienceByName(ctx *gin.Context) {

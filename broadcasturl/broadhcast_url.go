@@ -135,7 +135,7 @@ func (r *BroadcastURLDB) CreateNewBroadcastURL(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Created new Broadcast url!", "data": s, "success": true})
+	ctx.JSON(http.StatusCreated, gin.H{"message": "Created new Broadcast url!", "data": s, "success": true})
 }
 
 func (r *BroadcastURLDB) UpdateBroadcastURLByID(ctx *gin.Context) {
