@@ -126,7 +126,7 @@ func (r *PlatformDB) CreateNewPlatform(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Created new platform!", "data": s, "success": true})
+	ctx.JSON(http.StatusCreated, gin.H{"message": "Created new platform!", "data": s, "success": true})
 }
 
 func (r *PlatformDB) UpdatePlatformByName(ctx *gin.Context) {

@@ -135,7 +135,7 @@ func (r *EventItemDB) CreateNewEventItem(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Created new Event Item!", "data": s, "success": true})
+	ctx.JSON(http.StatusCreated, gin.H{"message": "Created new Event Item!", "data": s, "success": true})
 }
 
 func (r *EventItemDB) UpdateEventItemByID(ctx *gin.Context) {

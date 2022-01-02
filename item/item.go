@@ -141,7 +141,7 @@ func (r *ItemDB) CreateNewItem(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Created new Item!", "data": s, "success": true})
+	ctx.JSON(http.StatusCreated, gin.H{"message": "Created new Item!", "data": s, "success": true})
 }
 
 func (r *ItemDB) UpdateItemByID(ctx *gin.Context) {

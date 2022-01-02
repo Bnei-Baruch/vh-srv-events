@@ -135,7 +135,7 @@ func (r *EventPartOptionDB) CreateNewEventPartOption(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Created new Event Participation Option!", "data": s, "success": true})
+	ctx.JSON(http.StatusCreated, gin.H{"message": "Created new Event Participation Option!", "data": s, "success": true})
 }
 
 func (r *EventPartOptionDB) UpdateEventPartOptionByID(ctx *gin.Context) {

@@ -30,7 +30,7 @@ type partResponse struct {
 }
 
 type part struct {
-	KeycloakID    *string    `json:"keycloak_id" db:"keycloak_id" validate:"required"`
+	KeycloakID    *string    `json:"keycloak_id" db:"keycloak_id" validate:"required,uuid"`
 	FirstLanguage *string    `json:"first_language,omitempty" db:"first_language"`
 	EmailLanguage *string    `json:"email_language,omitempty" db:"email_language"`
 	DOB           *time.Time `json:"dob,omitempty" db:"dob"`
@@ -43,6 +43,8 @@ type part struct {
 
 type Participant interface {
 	GetParticipantById(ctx *gin.Context)
+	GetParticipantByEmail(ctx *gin.Context)
+	GetParticipantByKeycloakID(ctx *gin.Context)
 	GetAllParticipant(ctx *gin.Context)
 	CreateNewParticipant(ctx *gin.Context)
 	UpdateParticipantByID(ctx *gin.Context)
@@ -63,6 +65,50 @@ func (r *ParticipantDB) GetParticipantById(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	u, err := getPartById(r, ctx, id)
+
+	if err != nil {
+		if err.Error() == "not found" {
+			ctx.JSON(http.StatusNotFound, gin.H{
+				"error":   err.Error(),
+				"success": false,
+			})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":   err.Error(),
+			"success": false,
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"message": "Fetched!", "data": u, "success": true})
+}
+
+func (r *ParticipantDB) GetParticipantByKeycloakID(ctx *gin.Context) {
+	id := ctx.Param("id")
+
+	u, err := getPartByKeycloakID(r, ctx, id)
+
+	if err != nil {
+		if err.Error() == "not found" {
+			ctx.JSON(http.StatusNotFound, gin.H{
+				"error":   err.Error(),
+				"success": false,
+			})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":   err.Error(),
+			"success": false,
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"message": "Fetched!", "data": u, "success": true})
+}
+
+func (r *ParticipantDB) GetParticipantByEmail(ctx *gin.Context) {
+	email := ctx.Param("keycloak-id")
+
+	u, err := getPartByEmail(r, ctx, email)
 
 	if err != nil {
 		if err.Error() == "not found" {
@@ -147,7 +193,7 @@ func (r *ParticipantDB) CreateNewParticipant(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Created new participant!", "data": s, "success": true})
+	ctx.JSON(http.StatusCreated, gin.H{"message": "Created new participant!", "data": s, "success": true})
 }
 
 func (r *ParticipantDB) UpdateParticipantByID(ctx *gin.Context) {
@@ -220,6 +266,80 @@ func getPartById(r *ParticipantDB, ctx *gin.Context, id string) (partResponse, e
 	created_at,
 	updated_at 
 	from participant where id = $1`, id).Scan(
+		&u.ID,
+		&u.KeycloakID,
+		&u.FirstLanguage,
+		&u.EmailLanguage,
+		&u.DOB,
+		&u.Gender,
+		&u.Email,
+		&u.Country,
+		&u.FirstName,
+		&u.LastName,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+	); err != nil {
+		if err == pgx.ErrNoRows {
+			return partResponse{}, fmt.Errorf("not found")
+		}
+		return partResponse{}, err
+	}
+	return u, nil
+}
+
+func getPartByEmail(r *ParticipantDB, ctx *gin.Context, email string) (partResponse, error) {
+	u := partResponse{}
+	if err := r.db.QueryRow(ctx, `select 
+	id,
+	keycloak_id,
+	first_language,
+	email_language,
+	dob,
+	gender,
+	email,
+	country,
+	first_name,
+	last_name,
+	created_at,
+	updated_at 
+	from participant where email = $1`, email).Scan(
+		&u.ID,
+		&u.KeycloakID,
+		&u.FirstLanguage,
+		&u.EmailLanguage,
+		&u.DOB,
+		&u.Gender,
+		&u.Email,
+		&u.Country,
+		&u.FirstName,
+		&u.LastName,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+	); err != nil {
+		if err == pgx.ErrNoRows {
+			return partResponse{}, fmt.Errorf("not found")
+		}
+		return partResponse{}, err
+	}
+	return u, nil
+}
+
+func getPartByKeycloakID(r *ParticipantDB, ctx *gin.Context, id string) (partResponse, error) {
+	u := partResponse{}
+	if err := r.db.QueryRow(ctx, `select 
+	id,
+	keycloak_id,
+	first_language,
+	email_language,
+	dob,
+	gender,
+	email,
+	country,
+	first_name,
+	last_name,
+	created_at,
+	updated_at 
+	from participant where keycloak_id = $1`, id).Scan(
 		&u.ID,
 		&u.KeycloakID,
 		&u.FirstLanguage,

@@ -78,6 +78,7 @@ func (r *ParticipationStatusDB) GetParticipationStatusByID(ctx *gin.Context) {
 func (r *ParticipationStatusDB) GetAllParticipationStatus(ctx *gin.Context) {
 	skip := ctx.Query("skip")
 	limit := ctx.Query("limit")
+	eventID := ctx.Query("eventid")
 
 	if skip == "" {
 		skip = "0"
@@ -101,7 +102,7 @@ func (r *ParticipationStatusDB) GetAllParticipationStatus(ctx *gin.Context) {
 		return
 	}
 
-	u, err := getAllParticipationStatus(r, ctx, intSkip, intLimit)
+	u, err := getAllParticipationStatus(r, ctx, intSkip, intLimit, eventID)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -141,7 +142,7 @@ func (r *ParticipationStatusDB) CreateNewParticipationStatus(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Created new Participation Status!", "data": s, "success": true})
+	ctx.JSON(http.StatusCreated, gin.H{"message": "Created new Participation Status!", "data": s, "success": true})
 }
 
 func (r *ParticipationStatusDB) UpdateParticipationStatusByID(ctx *gin.Context) {
@@ -229,10 +230,13 @@ func getParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, id s
 	return u, nil
 }
 
-func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip int, limit int) (*[]participationStatusResponse, error) {
+func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip int, limit int, eventID string) (*[]participationStatusResponse, error) {
 
 	u := []participationStatusResponse{}
-	rows, _ := r.db.Query(ctx, fmt.Sprintf(`select 
+
+	userDbWhereQuery, orderByQuery := buildAndGetWhereQuery(eventID)
+
+	rows, err := r.db.Query(ctx, `select 
 	id,
 	participation_option,
 	participant_id,
@@ -242,7 +246,14 @@ func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip 
 	deleted,
 	created_at,
 	updated_at 
-	from participation_status LIMIT %d OFFSET %d`, limit, skip))
+	from participation_status`+userDbWhereQuery+
+		orderByQuery+
+		" LIMIT $1 OFFSET $2", limit, skip)
+	if err != nil {
+		fmt.Println("--error-while-executing-query", err)
+		return &u, err
+	}
+	defer rows.Close()
 	for rows.Next() {
 		var d participationStatusResponse
 		err := rows.Scan(&d.ID, &d.ParticipationOption, &d.ParticipantID, &d.EventID, &d.Confirmed, &d.RegistrationDate, &d.Deleted, &d.CreatedAt, &d.UpdatedAt)
@@ -375,4 +386,27 @@ func prepareParticipationStatusCreateQuery(req participationStatus) (string, str
 	concatedNumString := strings.Join(numString, ",")
 
 	return concatedCreateString, concatedNumString, args
+}
+
+func buildAndGetWhereQuery(eventID string) (string, string) {
+
+	var whereString strings.Builder
+	var orderBy strings.Builder
+	var whereCondition strings.Builder
+	whereString.WriteString(" WHERE")
+	whereCondition.WriteString("")
+
+	// WHERE query generation based on parameters
+	if eventID != "" {
+		whereCondition.WriteString(fmt.Sprintf(" event_id=%s", eventID))
+	}
+
+	orderBy.WriteString(fmt.Sprintf(" ORDER BY created_at %s", "asc"))
+
+	if whereCondition.String() != "" {
+		whereString.WriteString(whereCondition.String())
+	} else {
+		whereString.Reset()
+	}
+	return whereString.String(), orderBy.String()
 }

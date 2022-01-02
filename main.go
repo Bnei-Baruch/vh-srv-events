@@ -87,6 +87,8 @@ func (r *Router) Init() {
 		participant.PATCH("/:id", r.participant.UpdateParticipantByID)
 		participant.DELETE("/:id", r.participant.DeleteParticipantByID)
 		participant.GET("/:id", r.participant.GetParticipantById)
+		participant.GET("email/:email", r.participant.GetParticipantByEmail)
+		participant.GET("keycloakid/:id", r.participant.GetParticipantByKeycloakID)
 	}
 	basePath.GET("/participants", r.participant.GetAllParticipant)
 
