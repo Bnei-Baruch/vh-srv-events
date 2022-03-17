@@ -89,6 +89,8 @@ func (r *EventDB) GetEventByID(ctx *gin.Context) {
 func (r *EventDB) GetAllEvent(ctx *gin.Context) {
 	skip := ctx.Query("skip")
 	limit := ctx.Query("limit")
+	email := ctx.Query("email")
+	keycloakID := ctx.Query("kc_id")
 	slug := ctx.Query("slug")
 
 	if skip == "" {
@@ -113,16 +115,7 @@ func (r *EventDB) GetAllEvent(ctx *gin.Context) {
 		return
 	}
 
-	fetchedEvents, err := getAllEvent(r, ctx, intSkip, intLimit, slug)
-
-	// Manage if no event found
-	if len(*fetchedEvents) == 0 {
-		ctx.JSON(http.StatusNotFound, gin.H{
-			"error":   "no event found",
-			"success": false,
-		})
-		return
-	}
+	fetchedEvents, err := getAllEvent(r, ctx, intSkip, intLimit, slug, email, keycloakID)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -275,27 +268,67 @@ func getEventByID(r *EventDB, ctx *gin.Context, id string) (eventResponse, error
 	return u, nil
 }
 
-func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string) (*[]eventResponse, error) {
-
-	whereQuery := buildAndGetWhereEventQuery(slug)
+func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string, email string, kcID string) (*[]eventResponse, error) {
 
 	u := []eventResponse{}
-	rows, _ := r.db.Query(ctx, fmt.Sprintf(`select 
-	id,
-	registration_required,
-	registration_status,
-	audience,
-	slug,
-	name,
-	logo,
-	content,
-	deleted,
-	starts_on,
-	ends_on,
-	date_confirmed,
-	created_at,
+
+	var query string
+
+	if email != "" || kcID != "" {
+
+		var emailOrKcQuery string
+
+		if email != "" {
+			emailOrKcQuery = fmt.Sprintf("where p.email='%s'", email)
+		} else {
+			emailOrKcQuery = fmt.Sprintf("where p.keycloak_id='%s'", kcID)
+		}
+
+		query = fmt.Sprintf(`select 
+			e.id,
+			e.registration_required,
+			e.registration_status,
+			e.audience,
+			e.slug,
+			e.name,
+			e.logo,
+			e.content,
+			e.deleted,
+			e.starts_on,
+			e.ends_on,
+			e.date_confirmed,
+			e.created_at,
+			e.updated_at 
+			from event as e, participation_status as ps, participant as p
+			%s
+			and ps.participant_id = p.id
+			and e.id = ps.event_id
+			LIMIT %d OFFSET %d`, emailOrKcQuery, limit, skip)
+	} else {
+		whereQuery := buildAndGetWhereEventQuery(slug)
+
+		query = fmt.Sprintf(`select 
+		id,
+		registration_required,
+		registration_status,
+		audience,
+		slug,
+		name,
+		logo,
+		content,
+		deleted,
+		starts_on,
+		ends_on,
+		date_confirmed,
+		created_at,
+		updated_at 
 	updated_at 
-	from event`+whereQuery+" LIMIT %d OFFSET %d", limit, skip))
+		updated_at 
+		from event`+whereQuery+" LIMIT %d OFFSET %d", limit, skip)
+
+	}
+
+	rows, _ := r.db.Query(ctx, query)
 	for rows.Next() {
 		var d eventResponse
 		err := rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.Deleted, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.CreatedAt, &d.UpdatedAt)
