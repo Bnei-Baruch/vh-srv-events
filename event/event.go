@@ -322,10 +322,7 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string,
 		date_confirmed,
 		created_at,
 		updated_at 
-	updated_at 
-		updated_at 
 		from event`+whereQuery+" LIMIT %d OFFSET %d", limit, skip)
-
 	}
 
 	rows, _ := r.db.Query(ctx, query)
