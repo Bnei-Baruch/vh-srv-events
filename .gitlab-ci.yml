@@ -46,7 +46,7 @@ deploy_staging:
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
     - "[ ! -d /opt/srv-events-db ] && mkdir /opt/srv-events-db"
     - cp -f db/initial.sql /opt/srv-events-db/initial.sql
-    - IMAGE_NAME=$STAGING_IMAGE docker-compose up -d --remove-orphans --force-recreate
+    - IMAGE_NAME=$STAGING_IMAGE docker-compose up -d --remove-orphans
   only:
     - master
 
