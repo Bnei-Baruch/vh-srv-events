@@ -130,6 +130,9 @@ func (r *ParticipantDB) GetParticipantByEmail(ctx *gin.Context) {
 func (r *ParticipantDB) GetAllParticipant(ctx *gin.Context) {
 	skip := ctx.Query("skip")
 	limit := ctx.Query("limit")
+	eventId := ctx.Query("event_id")
+	eventSlug := ctx.Query("event_slug")
+	var intEventId int
 
 	if skip == "" {
 		skip = "0"
@@ -147,13 +150,22 @@ func (r *ParticipantDB) GetAllParticipant(ctx *gin.Context) {
 	}
 
 	// String conversion to int
+	if eventId != "" {
+		intEventId, err = strconv.Atoi(eventId)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid event_id value! Accepted value is INTEGER", "success": false})
+			return
+		}
+	}
+
+	// String conversion to int
 	intLimit, err := strconv.Atoi(limit)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid limit value! Accepted value is INTEGER", "success": false})
 		return
 	}
 
-	u, err := GetAllPart(r, ctx, intSkip, intLimit)
+	u, err := GetAllPart(r, ctx, intSkip, intLimit, intEventId, eventSlug)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -361,23 +373,62 @@ func getPartByKeycloakID(r *ParticipantDB, ctx *gin.Context, id string) (partRes
 	return u, nil
 }
 
-func GetAllPart(r *ParticipantDB, ctx *gin.Context, skip int, limit int) (*[]partResponse, error) {
+func GetAllPart(r *ParticipantDB, ctx *gin.Context, skip int, limit int, eventId int, eventSlug string) (*[]partResponse, error) {
 
 	u := []partResponse{}
-	rows, _ := r.db.Query(ctx, fmt.Sprintf(`select 
-	id,
-	keycloak_id,
-	first_language,
-	email_language,
-	dob,
-	gender,
-	email,
-	country,
-	first_name,
-	last_name,
-	created_at,
-	updated_at 
-	from participant LIMIT %d OFFSET %d`, limit, skip))
+
+	var query string
+
+	if eventId != 0 || eventSlug != "" {
+		var eventlOrSlugWhereQuery string
+		var eventlOrSlugFromQuery string
+
+		if eventId != 0 {
+			eventlOrSlugFromQuery = `FROM participant as p, participation_status as ps`
+			eventlOrSlugWhereQuery = fmt.Sprintf(`WHERE ps.event_id = %d 
+			AND p.id = ps.participant_id`, eventId)
+		} else {
+			eventlOrSlugFromQuery = `FROM participant as p, participation_status as ps, event as e`
+			eventlOrSlugWhereQuery = fmt.Sprintf(`WHERE e.slug = '%s'
+			AND ps.event_id = e.id
+			AND p.id = ps.participant_id`, eventSlug)
+		}
+
+		query = fmt.Sprintf(`SELECT 
+			p.id,
+			p.keycloak_id,
+			p.first_language,
+			p.email_language,
+			p.dob,
+			p.gender,
+			p.email,
+			p.country,
+			p.first_name,
+			p.last_name,
+			p.created_at,
+			p.updated_at 
+			%s
+			%s
+			LIMIT %d OFFSET %d`, eventlOrSlugFromQuery, eventlOrSlugWhereQuery, limit, skip)
+
+	} else {
+		query = fmt.Sprintf(`SELECT 
+			id,
+			keycloak_id,
+			first_language,
+			email_language,
+			dob,
+			gender,
+			email,
+			country,
+			first_name,
+			last_name,
+			created_at,
+			updated_at 
+			FROM participant LIMIT %d OFFSET %d`, limit, skip)
+	}
+
+	rows, _ := r.db.Query(ctx, query)
 	for rows.Next() {
 		var d partResponse
 		err := rows.Scan(&d.ID, &d.KeycloakID, &d.FirstLanguage, &d.EmailLanguage, &d.DOB, &d.Gender, &d.Email, &d.Country, &d.FirstName, &d.LastName, &d.CreatedAt, &d.UpdatedAt)
