@@ -233,5 +233,5 @@ func main() {
 
 	r.Init()
 
-	route.Run("localhost:" + cfg.APP_PORT)
+	route.Run("0.0.0.0:" + cfg.APP_PORT)
 }
