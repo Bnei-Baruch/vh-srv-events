@@ -29,6 +29,7 @@ type eventResponse struct {
 	DateConfirmed        *bool      `json:"date_confirmed" db:"date_confirmed"`
 	CreatedAt            *time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt            *time.Time `json:"updated_at" db:"updated_at"`
+	IsUserRegistered     *bool      `json:"is_user_registered,omitempty"`
 }
 
 type event struct {
@@ -298,11 +299,11 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string,
 			e.ends_on,
 			e.date_confirmed,
 			e.created_at,
-			e.updated_at 
-			from event as e, participation_status as ps, participant as p
-			%s
-			and ps.participant_id = p.id
-			and e.id = ps.event_id
+			e.updated_at,
+			CASE WHEN (SELECT COUNT(*) FROM participation_status as ps, participant as p %s and ps.participant_id = p.id and e.id = ps.event_id ) > 0 THEN true
+			ELSE false
+			END AS is_user_registered 
+			from event as e
 			LIMIT %d OFFSET %d`, emailOrKcQuery, limit, skip)
 	} else {
 		whereQuery := buildAndGetWhereEventQuery(slug)
@@ -328,7 +329,13 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string,
 	rows, _ := r.db.Query(ctx, query)
 	for rows.Next() {
 		var d eventResponse
-		err := rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.Deleted, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.CreatedAt, &d.UpdatedAt)
+		var err error
+		// Applied these checks to handle extra output is_user_registered when email or kcID is passed
+		if email != "" || kcID != "" {
+			err = rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.Deleted, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.CreatedAt, &d.UpdatedAt, &d.IsUserRegistered)
+		} else {
+			err = rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.Deleted, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.CreatedAt, &d.UpdatedAt)
+		}
 		if err != nil {
 			return &u, err
 		}
