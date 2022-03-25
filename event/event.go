@@ -486,12 +486,12 @@ func prepareEventCreateQuery(req event) (string, string, []interface{}) {
 		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
 		args = append(args, *req.Name)
 	}
-	if req.Logo != nil {
+	if req.Logo != nil && *req.Logo != "" {
 		createStrings = append(createStrings, "logo")
 		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
 		args = append(args, *req.Logo)
 	}
-	if req.Content != nil {
+	if req.Content != nil && *req.Content != "" {
 		createStrings = append(createStrings, "content")
 		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
 		args = append(args, *req.Content)
