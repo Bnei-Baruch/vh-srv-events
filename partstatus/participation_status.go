@@ -24,6 +24,27 @@ type participationStatusResponse struct {
 	Deleted             *bool      `json:"deleted" db:"deleted"`
 	CreatedAt           *time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt           *time.Time `json:"updated_at" db:"updated_at"`
+	//Event
+	RegistrationRequired *bool      `json:"event_registration_required" db:"registration_required"`
+	RegistrationStatus   *string    `json:"event_registration_status" db:"registration_status"`
+	Audience             *string    `json:"event_audience" db:"audience"`
+	Slug                 *string    `json:"event_slug" db:"slug"`
+	Name                 *string    `json:"event_name" db:"name"`
+	Logo                 *string    `json:"event_logo,omitempty" db:"logo"`
+	Content              *string    `json:"event_content,omitempty" db:"content"`
+	StartsOn             *time.Time `json:"event_starts_on" db:"starts_on"`
+	EndsOn               *time.Time `json:"event_ends_on" db:"ends_on"`
+	DateConfirmed        *bool      `json:"event_date_confirmed" db:"date_confirmed"`
+	//Participant
+	KeycloakID    *string    `json:"part_keycloak_id" db:"keycloak_id"`
+	FirstLanguage *string    `json:"part_first_language,omitempty" db:"first_language"`
+	EmailLanguage *string    `json:"part_email_language,omitempty" db:"email_language"`
+	DOB           *time.Time `json:"part_dob,omitempty" db:"dob"`
+	Gender        *string    `json:"part_gender,omitempty" db:"gender"`
+	Email         *string    `json:"part_email" db:"email"`
+	Country       *string    `json:"part_country,omitempty" db:"country"`
+	FirstName     *string    `json:"part_first_name" db:"first_name"`
+	LastName      *string    `json:"part_last_name" db:"last_name"`
 }
 
 type participationStatus struct {
@@ -202,25 +223,39 @@ func (r *ParticipationStatusDB) DeleteParticipationStatusByID(ctx *gin.Context) 
 func getParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, id string) (participationStatusResponse, error) {
 	u := participationStatusResponse{}
 	if err := r.db.QueryRow(ctx, `select 
-	id,
+	participation_status.id,
 	participation_option,
 	participant_id,
 	event_id,
 	confirmed,
 	registration_date,
-	deleted,
-	created_at,
-	updated_at 
-	from participation_status where id = $1`, id).Scan(
-		&u.ID,
-		&u.ParticipationOption,
-		&u.ParticipantID,
-		&u.EventID,
-		&u.Confirmed,
-		&u.RegistrationDate,
-		&u.Deleted,
-		&u.CreatedAt,
-		&u.UpdatedAt,
+	participation_status.deleted,
+	participation_status.created_at,
+	participation_status.updated_at,
+	event.registration_required,
+	event.registration_status,
+	event.audience,
+	event.slug,
+	event.name,
+	event.logo,
+	event.content,
+	event.starts_on,
+	event.ends_on,
+	event.date_confirmed,
+	participant.keycloak_id,
+	participant.first_language,
+	participant.email_language,
+	participant.dob,
+	participant.gender,
+	participant.email,
+	participant.country,
+	participant.first_name,
+	participant.last_name
+	FROM participation_status 
+	LEFT JOIN event ON participation_status.event_id = event.id LEFT JOIN participant ON participation_status.participant_id = participant.id where participation_status.id = $1`, id).Scan(
+		&u.ID, &u.ParticipationOption, &u.ParticipantID, &u.EventID, &u.Confirmed, &u.RegistrationDate, &u.Deleted, &u.CreatedAt, &u.UpdatedAt,
+		&u.RegistrationRequired, &u.RegistrationStatus, &u.Audience, &u.Slug, &u.Name, &u.Logo, &u.Content, &u.StartsOn, &u.EndsOn, &u.DateConfirmed,
+		&u.KeycloakID, &u.FirstLanguage, &u.EmailLanguage, &u.DOB, &u.Gender, &u.Email, &u.Country, &u.FirstName, &u.LastName,
 	); err != nil {
 		if err == pgx.ErrNoRows {
 			return participationStatusResponse{}, fmt.Errorf("not found")
@@ -237,16 +272,36 @@ func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip 
 	userDbWhereQuery, orderByQuery := buildAndGetWhereQuery(eventID)
 
 	rows, err := r.db.Query(ctx, `select 
-	id,
+	participation_status.id,
 	participation_option,
 	participant_id,
 	event_id,
 	confirmed,
 	registration_date,
-	deleted,
-	created_at,
-	updated_at 
-	from participation_status`+userDbWhereQuery+
+	participation_status.deleted,
+	participation_status.created_at,
+	participation_status.updated_at,
+	event.registration_required,
+	event.registration_status,
+	event.audience,
+	event.slug,
+	event.name,
+	event.logo,
+	event.content,
+	event.starts_on,
+	event.ends_on,
+	event.date_confirmed,
+	participant.keycloak_id,
+	participant.first_language,
+	participant.email_language,
+	participant.dob,
+	participant.gender,
+	participant.email,
+	participant.country,
+	participant.first_name,
+	participant.last_name
+	FROM participation_status 
+	LEFT JOIN event ON participation_status.event_id = event.id LEFT JOIN participant ON participation_status.participant_id = participant.id`+userDbWhereQuery+
 		orderByQuery+
 		" LIMIT $1 OFFSET $2", limit, skip)
 	if err != nil {
@@ -256,7 +311,11 @@ func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip 
 	defer rows.Close()
 	for rows.Next() {
 		var d participationStatusResponse
-		err := rows.Scan(&d.ID, &d.ParticipationOption, &d.ParticipantID, &d.EventID, &d.Confirmed, &d.RegistrationDate, &d.Deleted, &d.CreatedAt, &d.UpdatedAt)
+		err := rows.Scan(
+			&d.ID, &d.ParticipationOption, &d.ParticipantID, &d.EventID, &d.Confirmed, &d.RegistrationDate, &d.Deleted, &d.CreatedAt, &d.UpdatedAt,
+			&d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.StartsOn, &d.EndsOn, &d.DateConfirmed,
+			&d.KeycloakID, &d.FirstLanguage, &d.EmailLanguage, &d.DOB, &d.Gender, &d.Email, &d.Country, &d.FirstName, &d.LastName,
+		)
 		if err != nil {
 			return &u, err
 		}
