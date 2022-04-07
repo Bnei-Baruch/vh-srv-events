@@ -100,6 +100,7 @@ func (r *ParticipationStatusDB) GetAllParticipationStatus(ctx *gin.Context) {
 	skip := ctx.Query("skip")
 	limit := ctx.Query("limit")
 	eventID := ctx.Query("eventid")
+	keycloakID := ctx.Query("kc_id")
 
 	if skip == "" {
 		skip = "0"
@@ -123,7 +124,7 @@ func (r *ParticipationStatusDB) GetAllParticipationStatus(ctx *gin.Context) {
 		return
 	}
 
-	u, err := getAllParticipationStatus(r, ctx, intSkip, intLimit, eventID)
+	u, err := getAllParticipationStatus(r, ctx, intSkip, intLimit, eventID, keycloakID)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -265,11 +266,11 @@ func getParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, id s
 	return u, nil
 }
 
-func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip int, limit int, eventID string) (*[]participationStatusResponse, error) {
+func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip int, limit int, eventID string, keycloakID string) (*[]participationStatusResponse, error) {
 
 	u := []participationStatusResponse{}
 
-	userDbWhereQuery, orderByQuery := buildAndGetWhereQuery(eventID)
+	userDbWhereQuery, orderByQuery := buildAndGetWhereQuery(eventID, keycloakID)
 
 	rows, err := r.db.Query(ctx, `select 
 	participation_status.id,
@@ -447,7 +448,7 @@ func prepareParticipationStatusCreateQuery(req participationStatus) (string, str
 	return concatedCreateString, concatedNumString, args
 }
 
-func buildAndGetWhereQuery(eventID string) (string, string) {
+func buildAndGetWhereQuery(eventID string, keycloakID string) (string, string) {
 
 	var whereString strings.Builder
 	var orderBy strings.Builder
@@ -458,6 +459,14 @@ func buildAndGetWhereQuery(eventID string) (string, string) {
 	// WHERE query generation based on parameters
 	if eventID != "" {
 		whereCondition.WriteString(fmt.Sprintf(" event_id=%s", eventID))
+	}
+
+	if keycloakID != "" {
+		if whereCondition.String() != "" {
+			whereCondition.WriteString(fmt.Sprintf(" AND participant.keycloak_id='%s'", keycloakID))
+		} else {
+			whereCondition.WriteString(fmt.Sprintf(" participant.keycloak_id='%s'", keycloakID))
+		}
 	}
 
 	orderBy.WriteString(fmt.Sprintf(" ORDER BY created_at %s", "asc"))
