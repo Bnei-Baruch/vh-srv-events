@@ -15,15 +15,15 @@ import (
 )
 
 type itemResponse struct {
-	ID               *int       `json:"id" db:"id"`
-	StartDate        *time.Time `json:"start_date" db:"start_date"`
-	Duration         *int       `json:"duration" db:"duration"`
-	Name             *string    `json:"name" db:"name"`
-	Content          *string    `json:"content,omitempty" db:"content"`
-	OriginalLanguage *string    `json:"original_language" db:"original_language"`
-	Translated       *bool      `json:"translated" db:"translated"`
-	CreatedAt        *time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt        *time.Time `json:"updated_at" db:"updated_at"`
+	ID               *int                    `json:"id" db:"id"`
+	StartDate        *time.Time              `json:"start_date" db:"start_date"`
+	Duration         *int                    `json:"duration" db:"duration"`
+	Name             *string                 `json:"name" db:"name"`
+	Content          *map[string]interface{} `json:"content,omitempty" db:"content"`
+	OriginalLanguage *string                 `json:"original_language" db:"original_language"`
+	Translated       *bool                   `json:"translated" db:"translated"`
+	CreatedAt        *time.Time              `json:"created_at" db:"created_at"`
+	UpdatedAt        *time.Time              `json:"updated_at" db:"updated_at"`
 }
 
 type item struct {
