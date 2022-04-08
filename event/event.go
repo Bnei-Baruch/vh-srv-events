@@ -15,21 +15,21 @@ import (
 )
 
 type eventResponse struct {
-	ID                   *int       `json:"id" db:"id"`
-	RegistrationRequired *bool      `json:"registration_required" db:"registration_required"`
-	RegistrationStatus   *string    `json:"registration_status" db:"registration_status"`
-	Audience             *string    `json:"audience" db:"audience"`
-	Slug                 *string    `json:"slug" db:"slug"`
-	Name                 *string    `json:"name" db:"name"`
-	Logo                 *string    `json:"logo,omitempty" db:"logo"`
-	Content              *string    `json:"content,omitempty" db:"content"`
-	Deleted              *bool      `json:"deleted" db:"deleted"`
-	StartsOn             *time.Time `json:"starts_on" db:"starts_on"`
-	EndsOn               *time.Time `json:"ends_on" db:"ends_on"`
-	DateConfirmed        *bool      `json:"date_confirmed" db:"date_confirmed"`
-	CreatedAt            *time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt            *time.Time `json:"updated_at" db:"updated_at"`
-	IsUserRegistered     *bool      `json:"is_user_registered,omitempty"`
+	ID                   *int                    `json:"id" db:"id"`
+	RegistrationRequired *bool                   `json:"registration_required" db:"registration_required"`
+	RegistrationStatus   *string                 `json:"registration_status" db:"registration_status"`
+	Audience             *string                 `json:"audience" db:"audience"`
+	Slug                 *string                 `json:"slug" db:"slug"`
+	Name                 *string                 `json:"name" db:"name"`
+	Logo                 *string                 `json:"logo,omitempty" db:"logo"`
+	Content              *map[string]interface{} `json:"content,omitempty" db:"content"`
+	Deleted              *bool                   `json:"deleted" db:"deleted"`
+	StartsOn             *time.Time              `json:"starts_on" db:"starts_on"`
+	EndsOn               *time.Time              `json:"ends_on" db:"ends_on"`
+	DateConfirmed        *bool                   `json:"date_confirmed" db:"date_confirmed"`
+	CreatedAt            *time.Time              `json:"created_at" db:"created_at"`
+	UpdatedAt            *time.Time              `json:"updated_at" db:"updated_at"`
+	IsUserRegistered     *bool                   `json:"is_user_registered,omitempty"`
 }
 
 type event struct {

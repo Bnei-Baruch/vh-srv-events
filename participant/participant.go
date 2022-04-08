@@ -106,7 +106,7 @@ func (r *ParticipantDB) GetParticipantByKeycloakID(ctx *gin.Context) {
 }
 
 func (r *ParticipantDB) GetParticipantByEmail(ctx *gin.Context) {
-	email := ctx.Param("keycloak-id")
+	email := ctx.Param("email")
 
 	u, err := getPartByEmail(r, ctx, email)
 
@@ -178,6 +178,10 @@ func (r *ParticipantDB) GetAllParticipant(ctx *gin.Context) {
 }
 
 func (r *ParticipantDB) CreateNewParticipant(ctx *gin.Context) {
+	type partWithID struct {
+		part
+		ID int `json:"id"`
+	}
 	s := part{}
 	if err := ctx.ShouldBindJSON(&s); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -197,7 +201,9 @@ func (r *ParticipantDB) CreateNewParticipant(ctx *gin.Context) {
 		return
 	}
 
-	if err := CreateNewPart(r, ctx, s); err != nil {
+	id, err := CreateNewPart(r, ctx, s)
+
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"success": false,
@@ -205,7 +211,12 @@ func (r *ParticipantDB) CreateNewParticipant(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, gin.H{"message": "Created new participant!", "data": s, "success": true})
+	partInfo := partWithID{
+		part: s,
+		ID:   id,
+	}
+
+	ctx.JSON(http.StatusCreated, gin.H{"message": "Created new participant!", "data": partInfo, "success": true})
 }
 
 func (r *ParticipantDB) UpdateParticipantByID(ctx *gin.Context) {
@@ -460,20 +471,35 @@ func UpdatePartByID(r *ParticipantDB, ctx *gin.Context, req part, id string) err
 	}
 }
 
-func CreateNewPart(r *ParticipantDB, ctx *gin.Context, req part) error {
+func CreateNewPart(r *ParticipantDB, ctx *gin.Context, req part) (int, error) {
 
 	createString, numString, createQueryArgs := prepareParticipantCreateQuery(req)
 
-	if len(createQueryArgs) != 0 {
-		_, err := r.db.Exec(ctx, fmt.Sprintf(`INSERT INTO participant (%s) VALUES (%s)`, createString, numString),
-			createQueryArgs...)
-		if err != nil {
-			return fmt.Errorf("problem creating participant: %w", err)
-		}
+	// if err := DB.QueryRow(c, fmt.Sprintf(`INSERT INTO orders (%s) VALUES (%s) RETURNING id`, createString, numString),
+	// 	createQueryArgs...).Scan(
+	// 	&o.ID,
+	// ); err != nil {
+	// 	if err == pgx.ErrNoRows {
+	// 		return o, fmt.Errorf("no rows affected")
+	// 	}
+	// 	return o, err
+	// }
 
-		return nil
+	var ID int
+
+	if len(createQueryArgs) != 0 {
+		if err := r.db.QueryRow(ctx, fmt.Sprintf(`INSERT INTO participant (%s) VALUES (%s) RETURNING id`, createString, numString),
+			createQueryArgs...).Scan(
+			&ID,
+		); err != nil {
+			if err == pgx.ErrNoRows {
+				return 0, fmt.Errorf("no rows affected")
+			}
+			return 0, err
+		}
+		return ID, nil
 	} else {
-		return fmt.Errorf("invalid values")
+		return 0, fmt.Errorf("invalid values")
 	}
 }
 
