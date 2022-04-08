@@ -475,16 +475,6 @@ func CreateNewPart(r *ParticipantDB, ctx *gin.Context, req part) (int, error) {
 
 	createString, numString, createQueryArgs := prepareParticipantCreateQuery(req)
 
-	// if err := DB.QueryRow(c, fmt.Sprintf(`INSERT INTO orders (%s) VALUES (%s) RETURNING id`, createString, numString),
-	// 	createQueryArgs...).Scan(
-	// 	&o.ID,
-	// ); err != nil {
-	// 	if err == pgx.ErrNoRows {
-	// 		return o, fmt.Errorf("no rows affected")
-	// 	}
-	// 	return o, err
-	// }
-
 	var ID int
 
 	if len(createQueryArgs) != 0 {
