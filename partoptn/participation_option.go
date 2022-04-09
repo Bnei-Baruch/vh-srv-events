@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -13,11 +14,15 @@ import (
 )
 
 type partOptionResponse struct {
-	Name *string `json:"name" db:"name"`
+	Name        *string                 `json:"name" db:"name"`
+	Description *string                 `json:"description,omitempty" db:"description"`
+	Content     *map[string]interface{} `json:"content,omitempty" db:"content"`
 }
 
 type partOption struct {
-	Name *string `json:"Name" db:"Name" validate:"required"`
+	Name        *string `json:"name" db:"Name" validate:"required"`
+	Description *string `json:"description,omitempty" db:"description"`
+	Content     *string `json:"content,omitempty" db:"content"`
 }
 
 type ParticipationOption interface {
@@ -186,9 +191,13 @@ func (r *ParticipationOptionDB) DeleteParticipationOptionByName(ctx *gin.Context
 func getPartOptionByName(r *ParticipationOptionDB, ctx *gin.Context, name string) (partOptionResponse, error) {
 	u := partOptionResponse{}
 	if err := r.db.QueryRow(ctx, `select 
-	name 
+	name,
+	description,
+	content
 	from participation_option where name = $1`, name).Scan(
 		&u.Name,
+		&u.Description,
+		&u.Content,
 	); err != nil {
 		if err == pgx.ErrNoRows {
 			return partOptionResponse{}, fmt.Errorf("not found")
@@ -202,11 +211,13 @@ func GetAllPartOption(r *ParticipationOptionDB, ctx *gin.Context, skip int, limi
 
 	u := []partOptionResponse{}
 	rows, _ := r.db.Query(ctx, fmt.Sprintf(`select 
-	name 
+	name,
+	description,
+	content
 	from participation_option LIMIT %d OFFSET %d`, limit, skip))
 	for rows.Next() {
 		var d partOptionResponse
-		err := rows.Scan(&d.Name)
+		err := rows.Scan(&d.Name, &d.Description, &d.Content)
 		if err != nil {
 			return &u, err
 		}
@@ -216,10 +227,14 @@ func GetAllPartOption(r *ParticipationOptionDB, ctx *gin.Context, skip int, limi
 }
 
 func UpdatePartOptionByName(r *ParticipationOptionDB, ctx *gin.Context, req partOption, name string) error {
-	if req.Name != nil {
-		updateRes, err := r.db.Exec(ctx, `UPDATE participation_option SET name=$1 WHERE name=$2`, req.Name, name)
+
+	toUpdate, toUpdateArgs := preparePartOptionUpdateQuery(req)
+
+	if len(toUpdateArgs) != 0 {
+		updateRes, err := r.db.Exec(ctx, fmt.Sprintf(`UPDATE participation_option SET %s WHERE name='%s'`, toUpdate, name),
+			toUpdateArgs...)
 		if err != nil {
-			return fmt.Errorf("problem updating participation_option: %w", err)
+			return fmt.Errorf("problem updating event: %w", err)
 		}
 
 		if updateRes.RowsAffected() == 0 {
@@ -233,17 +248,72 @@ func UpdatePartOptionByName(r *ParticipationOptionDB, ctx *gin.Context, req part
 }
 
 func CreateNewPartOption(r *ParticipationOptionDB, ctx *gin.Context, req partOption) error {
-	_, err := r.db.Exec(ctx,
-		`INSERT INTO participation_option (
-			name)
-		VALUES (
-			$1)  `,
-		*req.Name)
 
-	return err
+	createString, numString, createQueryArgs := preparePartOptionCreateQuery(req)
+
+	if len(createQueryArgs) != 0 {
+		_, err := r.db.Exec(ctx, fmt.Sprintf(`INSERT INTO participation_option (%s) VALUES (%s)`, createString, numString),
+			createQueryArgs...)
+		if err != nil {
+			return fmt.Errorf("problem creating event: %w", err)
+		}
+
+		return nil
+	} else {
+		return fmt.Errorf("invalid values")
+	}
 }
 
 func DeletePartOptionByName(r *ParticipationOptionDB, ctx context.Context, name string) error {
 	_, err := r.db.Exec(ctx, "delete from participation_option where name=$1", name)
 	return err
+}
+
+func preparePartOptionCreateQuery(req partOption) (string, string, []interface{}) {
+	var createStrings []string
+	var numString []string
+	var args []interface{}
+
+	if req.Content != nil {
+		createStrings = append(createStrings, "content")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Content)
+	}
+	if req.Description != nil {
+		createStrings = append(createStrings, "description")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Description)
+	}
+	if req.Name != nil {
+		createStrings = append(createStrings, "name")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.Name)
+	}
+
+	concatedCreateString := strings.Join(createStrings, ",")
+	concatedNumString := strings.Join(numString, ",")
+
+	return concatedCreateString, concatedNumString, args
+}
+
+func preparePartOptionUpdateQuery(req partOption) (string, []interface{}) {
+	var updateStrings []string
+	var args []interface{}
+
+	if req.Name != nil {
+		updateStrings = append(updateStrings, fmt.Sprintf("name=$%d", len(updateStrings)+1))
+		args = append(args, *req.Name)
+	}
+	if req.Description != nil {
+		updateStrings = append(updateStrings, fmt.Sprintf("description=$%d", len(updateStrings)+1))
+		args = append(args, *req.Description)
+	}
+	if req.Content != nil {
+		updateStrings = append(updateStrings, fmt.Sprintf("content=$%d", len(updateStrings)+1))
+		args = append(args, *req.Content)
+	}
+
+	updateArgument := strings.Join(updateStrings, ",")
+
+	return updateArgument, args
 }
