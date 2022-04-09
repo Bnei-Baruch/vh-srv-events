@@ -38,7 +38,7 @@ deploy_staging:
     DATABASE_URL: "postgres://postgres:password@eventsdb:5432/event"
     APP_PORT: "8080"
     APP_MODE: "dev"
-  image: gitlab.bbdev.team:5050/vh/buildutils/buildutil:0.2.0
+  image: gitlab.bbdev.team:5050/vh/buildutils/buildutil:0.5.0
   stage: deploy
   tags:
     - staging
@@ -53,41 +53,41 @@ deploy_staging:
     - master
 
 
-# build_production:
-#   image: docker:latest
-#   stage: build
-#   tags:
-#     - dockerbuild
-#   services:
-#     - docker:19.03.12-dind
-#   script:
-#     - env
-#     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
-#     - docker build -t $PROD_IMAGE .
-#     - docker push $PROD_IMAGE
-#   only:
-#     - tags
+build_production:
+  image: docker:latest
+  stage: build
+  tags:
+    - dockerbuild
+  services:
+    - docker:19.03.12-dind
+  script:
+    - env
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+    - docker build -t $PROD_IMAGE .
+    - docker push $PROD_IMAGE
+  only:
+    - tags
 
-# deploy_production:
-#   #image: tmaier/docker-compose:latest
-#   image: gitlab.bbdev.team:5050/vh/buildutils/buildutil:0.2.0
-#   stage: deploy
-#   tags:
-#     - production
-#   variables: 
-#     # we want to use the db in staging server itself.
-#     DB_HOST: "${PROD_PG_HOST}" 
-#     DB_PORT: ${PROD_PG_PORT} 
-#     DB_USER: ${PROD_PROFILE_DB_USER}
-#     DB_DATABASE: ${PROD_PROFILE_DB_NAME}
-#     DB_PASSWORD: ${PROD_PROFILE_DB_PASS}
-#     APP_PORT: ":7471"
-#     APP_MODE: "prod"
-#     DATABASE_URL: "postgres://${PROD_PROFILE_DB_USER}:${PROD_PROFILE_DB_PASS}@${PROD_PG_HOST}:${PROD_PG_PORT}/${PROD_PROFILE_DB_NAME}"
-#   script:
-#     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
-#     - IMAGE_NAME=$PROD_IMAGE docker-compose up -d vh-srv-profile
-#   only:
-#     - tags
-#   when: manual
+deploy_production:
+  #image: tmaier/docker-compose:latest
+  image: gitlab.bbdev.team:5050/vh/buildutils/buildutil:0.5.0
+  stage: deploy
+  tags:
+    - production
+  variables: 
+    # we want to use the db in staging server itself.
+    DB_HOST: "${PROD_PG_HOST}" 
+    DB_PORT: ${PROD_PG_PORT} 
+    DB_USER: ${PROD_EVENTS_DB_USER}
+    DB_DATABASE: ${PROD_EVENTS_DB_NAME}
+    DB_PASSWORD: ${PROD_EVENTS_DB_PASS}
+    APP_PORT: "8080"
+    APP_MODE: "prod"
+    DATABASE_URL: "postgres://${PROD_EVENTS_DB_USER}:${PROD_EVENTS_DB_PASS}@${PROD_PG_HOST}:${PROD_PG_PORT}/${PROD_EVENTS_DB_NAME}"
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+    - IMAGE_NAME=$PROD_IMAGE docker-compose up -d vh-srv-profile
+  only:
+    - tags
+  when: manual
 
