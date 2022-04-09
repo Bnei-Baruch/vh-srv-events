@@ -86,7 +86,7 @@ deploy_production:
     DATABASE_URL: "postgres://${PROD_EVENTS_DB_USER}:${PROD_EVENTS_DB_PASS}@${PROD_PG_HOST}:${PROD_PG_PORT}/${PROD_EVENTS_DB_NAME}"
   script:
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
-    - IMAGE_NAME=$PROD_IMAGE docker-compose up -d vh-srv-profile
+    - IMAGE_NAME=$PROD_IMAGE docker-compose up -d vh-srv-events
   only:
     - tags
   when: manual
