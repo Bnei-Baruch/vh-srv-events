@@ -439,7 +439,9 @@ INSERT INTO country_list VALUES
     ('Virgin Islands, U.S.','VI');
 
 CREATE TABLE IF NOT EXISTS participation_option (
-    name TEXT NOT NULL UNIQUE
+    name        TEXT NOT NULL UNIQUE,
+    description TEXT,
+    content     JSON
 );
 
 CREATE TABLE IF NOT EXISTS platform (
