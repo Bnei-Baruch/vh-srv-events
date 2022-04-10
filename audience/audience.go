@@ -224,7 +224,7 @@ func UpdateAudienceByName(r *AudienceDB, ctx *gin.Context, req audience, name st
 	toUpdate, toUpdateArgs := prepareAudienceUpdateQuery(req)
 
 	if len(toUpdateArgs) != 0 {
-		updateRes, err := r.db.Exec(ctx, fmt.Sprintf(`UPDATE audience SET %s WHERE name=%s`, toUpdate, name),
+		updateRes, err := r.db.Exec(ctx, fmt.Sprintf(`UPDATE audience SET %s WHERE name='%s'`, toUpdate, name),
 			toUpdateArgs...)
 		if err != nil {
 			return fmt.Errorf("problem updating audience: %w", err)
