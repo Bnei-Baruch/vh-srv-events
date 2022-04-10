@@ -29,7 +29,7 @@ type partResponse struct {
 	UpdatedAt     *time.Time `json:"updated_at" db:"updated_at"`
 }
 
-type part struct {
+type Part struct {
 	KeycloakID    *string    `json:"keycloak_id" db:"keycloak_id" validate:"required,uuid"`
 	FirstLanguage *string    `json:"first_language,omitempty" db:"first_language"`
 	EmailLanguage *string    `json:"email_language,omitempty" db:"email_language"`
@@ -179,10 +179,10 @@ func (r *ParticipantDB) GetAllParticipant(ctx *gin.Context) {
 
 func (r *ParticipantDB) CreateNewParticipant(ctx *gin.Context) {
 	type partWithID struct {
-		part
+		Part
 		ID int `json:"id"`
 	}
-	s := part{}
+	s := Part{}
 	if err := ctx.ShouldBindJSON(&s); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
@@ -212,7 +212,7 @@ func (r *ParticipantDB) CreateNewParticipant(ctx *gin.Context) {
 	}
 
 	partInfo := partWithID{
-		part: s,
+		Part: s,
 		ID:   id,
 	}
 
@@ -220,7 +220,7 @@ func (r *ParticipantDB) CreateNewParticipant(ctx *gin.Context) {
 }
 
 func (r *ParticipantDB) UpdateParticipantByID(ctx *gin.Context) {
-	u := part{}
+	u := Part{}
 	if err := ctx.ShouldBindJSON(&u); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
@@ -451,7 +451,7 @@ func GetAllPart(r *ParticipantDB, ctx *gin.Context, skip int, limit int, eventId
 	return &u, rows.Err()
 }
 
-func UpdatePartByID(r *ParticipantDB, ctx *gin.Context, req part, id string) error {
+func UpdatePartByID(r *ParticipantDB, ctx *gin.Context, req Part, id string) error {
 	toUpdate, toUpdateArgs := prepareParticipantUpdateQuery(req)
 
 	if len(toUpdateArgs) != 0 {
@@ -471,7 +471,7 @@ func UpdatePartByID(r *ParticipantDB, ctx *gin.Context, req part, id string) err
 	}
 }
 
-func CreateNewPart(r *ParticipantDB, ctx *gin.Context, req part) (int, error) {
+func CreateNewPart(r *ParticipantDB, ctx *gin.Context, req Part) (int, error) {
 
 	createString, numString, createQueryArgs := prepareParticipantCreateQuery(req)
 
@@ -498,7 +498,7 @@ func DeletePartByID(r *ParticipantDB, ctx context.Context, id string) error {
 	return err
 }
 
-func prepareParticipantUpdateQuery(req part) (string, []interface{}) {
+func prepareParticipantUpdateQuery(req Part) (string, []interface{}) {
 	var updateStrings []string
 	var args []interface{}
 
@@ -549,7 +549,7 @@ func prepareParticipantUpdateQuery(req part) (string, []interface{}) {
 	return updateArgument, args
 }
 
-func prepareParticipantCreateQuery(req part) (string, string, []interface{}) {
+func prepareParticipantCreateQuery(req Part) (string, string, []interface{}) {
 	var createStrings []string
 	var numString []string
 	var args []interface{}
