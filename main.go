@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -11,14 +10,15 @@ import (
 	"vh-srv-event/broadcasturl"
 	"vh-srv-event/event"
 	"vh-srv-event/item"
+	"vh-srv-event/notification"
 	part "vh-srv-event/participant"
 	partoptn "vh-srv-event/partoptn"
 	"vh-srv-event/partstatus"
 	"vh-srv-event/platform"
+	"vh-srv-event/util"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/kelseyhightower/envconfig"
 )
 
 type Controllers struct {
@@ -33,17 +33,7 @@ type Controllers struct {
 	EventItem           event.EventItem
 	EventPartOption     event.EventPartOption
 	ParticipationStatus partstatus.ParticipationStatus
-}
-
-// cfg is the struct type that contains fields that stores the necessary configuration
-// gathered from the environment.
-var cfg struct {
-	DBUser   string `envconfig:"DB_USER" default:"postgres"`
-	DBPass   string `envconfig:"DB_PASSWORD" default:"password"`
-	DBName   string `envconfig:"DB_DATABASE" default:"event"`
-	DBHost   string `envconfig:"DB_HOST" default:"localhost"`
-	DBPort   string `envconfig:"DB_PORT" default:"5432"`
-	APP_PORT string `envconfig:"APP_PORT" default:"8080"`
+	Notification        notification.Notification
 }
 
 type Router struct {
@@ -59,6 +49,7 @@ type Router struct {
 	eventItem           event.EventItem
 	eventPartOption     event.EventPartOption
 	participationStatus partstatus.ParticipationStatus
+	eventEmail          notification.Notification
 }
 
 func NewRouter(server *gin.Engine, controller Controllers) *Router {
@@ -75,6 +66,7 @@ func NewRouter(server *gin.Engine, controller Controllers) *Router {
 		controller.EventItem,
 		controller.EventPartOption,
 		controller.ParticipationStatus,
+		controller.Notification,
 	}
 }
 func (r *Router) Init() {
@@ -182,17 +174,26 @@ func (r *Router) Init() {
 		participationStatus.DELETE("/:id", r.participationStatus.DeleteParticipationStatusByID)
 	}
 	basePath.GET("/participation-statuses", r.participationStatus.GetAllParticipationStatus)
+
+	//Notification Email
+	emailNotification := basePath.Group("/notification")
+	{
+		emailNotification.POST("/event", r.eventEmail.SendEventEmail)
+	}
+
 }
 
 func main() {
 	route := gin.Default()
 
-	if err := envconfig.Process("LIST", &cfg); err != nil {
-		log.Fatalln("Error while fetching env file")
+	config, err := util.GetEnv()
+
+	if err != nil {
+		fmt.Println(err)
 		return
 	}
 
-	databaseURL := "postgres://" + cfg.DBUser + ":" + cfg.DBPass + "@" + cfg.DBHost + ":" + cfg.DBPort + "/" + cfg.DBName
+	databaseURL := "postgres://" + config.DBUser + ":" + config.DBPass + "@" + config.DBHost + ":" + config.DBPort + "/" + config.DBName
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -216,6 +217,7 @@ func main() {
 	eventItem := event.NewEventItem(conn)
 	event := event.NewEvent(conn)
 	participationStatus := partstatus.NewParticipationStatus(conn)
+	notification := notification.NewNotification(conn)
 
 	r := NewRouter(route, Controllers{
 		Participant:         participant,
@@ -229,9 +231,10 @@ func main() {
 		EventItem:           eventItem,
 		EventPartOption:     eventPartOption,
 		ParticipationStatus: participationStatus,
+		Notification:        notification,
 	})
 
 	r.Init()
 
-	route.Run(":" + cfg.APP_PORT)
+	route.Run(":" + config.APP_PORT)
 }
