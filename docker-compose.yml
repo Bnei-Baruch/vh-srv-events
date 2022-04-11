@@ -16,6 +16,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_HOST: "${DB_HOST}"
       PGPORT: ${DB_PORT}
+      DB_PORT: "${DB_PORT}"
       DB_DATABASE: ${DB_DATABASE}
       DB_APPNAME: "bbdev"
       APP_PORT: "${APP_PORT}"
