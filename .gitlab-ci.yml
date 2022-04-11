@@ -20,6 +20,8 @@ build_staging:
     - docker tag $STAGING_IMAGE $STAGING_LATEST_IMAGE
     - docker push $STAGING_IMAGE
     - docker push $STAGING_LATEST_IMAGE
+  only:
+    - master
   # rules:
   #   - changes:
   #       - docker-compose.yml
