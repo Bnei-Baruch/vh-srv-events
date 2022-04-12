@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"vh-srv-event/util"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -54,6 +55,16 @@ type participationStatus struct {
 	Confirmed           *bool      `json:"confirmed" db:"confirmed"`
 	RegistrationDate    *time.Time `json:"registration_date" db:"registration_date" validate:"required"`
 	Deleted             *bool      `json:"deleted" db:"deleted"`
+}
+
+type partStatusNotification struct {
+	Notification     bool   `json:"notification"`
+	NotificationType string `json:"notification_type"`
+}
+
+type partStatusWithNotification struct {
+	participationStatus
+	partStatusNotification
 }
 
 type ParticipationStatus interface {
@@ -137,7 +148,7 @@ func (r *ParticipationStatusDB) GetAllParticipationStatus(ctx *gin.Context) {
 }
 
 func (r *ParticipationStatusDB) CreateNewParticipationStatus(ctx *gin.Context) {
-	s := participationStatus{}
+	s := partStatusWithNotification{}
 	if err := ctx.ShouldBindJSON(&s); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
@@ -346,15 +357,27 @@ func updateParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, r
 	}
 }
 
-func createNewParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, req participationStatus) error {
+func createNewParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, req partStatusWithNotification) error {
 
-	createString, numString, createQueryArgs := prepareParticipationStatusCreateQuery(req)
+	createString, numString, createQueryArgs := prepareParticipationStatusCreateQuery(req.participationStatus)
 
+	var id int
 	if len(createQueryArgs) != 0 {
-		_, err := r.db.Exec(ctx, fmt.Sprintf(`INSERT INTO participation_status (%s) VALUES (%s)`, createString, numString),
-			createQueryArgs...)
-		if err != nil {
-			return fmt.Errorf("problem creating participation status: %w", err)
+		if err := r.db.QueryRow(ctx, fmt.Sprintf(`INSERT INTO participation_status (%s) VALUES (%s) RETURNING id`, createString, numString),
+			createQueryArgs...).Scan(
+			&id,
+		); err != nil {
+			if err == pgx.ErrNoRows {
+				return fmt.Errorf("no rows affected")
+			}
+			return err
+		}
+
+		if req.Notification && req.NotificationType == "confirmation" {
+			emailErr := util.SendConfirmationEmail(ctx, r.db, id)
+			if emailErr != nil {
+				return fmt.Errorf("registered user to event but problem sending email: %w", emailErr)
+			}
 		}
 
 		return nil

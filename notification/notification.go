@@ -83,7 +83,7 @@ func fetchUsersAndSendEmail(r *NotificationDB, ctx *gin.Context, s notification)
 		if err != nil {
 			return err
 		}
-		emailErr := util.SendEmail(s.FromName, s.FromEmail, *s.EventTemplate, *s.Language, *d.Email, *d.FirstName, *d.LastName)
+		emailErr := util.SendEmail(s.FromName, s.FromEmail, *s.EventTemplate, *d.Email, *d.FirstName, *d.LastName)
 		if emailErr != nil {
 			return emailErr
 		}

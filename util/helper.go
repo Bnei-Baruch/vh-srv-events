@@ -4,6 +4,11 @@ import (
 	"fmt"
 	"log"
 
+	part "vh-srv-event/participant"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
@@ -19,19 +24,50 @@ type config struct {
 	SendGridApiKey string `envconfig:"SEND_GRID_KEY" default:"SENDGRID_KEY_REDACTED"`
 }
 
-func SendEmail(fromName *string, fromEmail *string, templateId string, language string, email string, firstname string, lastname string) error {
-	// var templateId string
+func SendConfirmationEmail(ctx *gin.Context, r *pgxpool.Pool, participationStatusID int) error {
+	u := part.Part{}
+	if err := r.QueryRow(ctx, `select 
+	p.first_name,
+	p.last_name,
+	p.email,
+	p.email_language 
+	FROM participation_status as ps, participant as p 
+	WHERE ps.id = $1 AND ps.participant_id = p.id`, participationStatusID).Scan(
+		&u.FirstName, &u.LastName, &u.Email, &u.EmailLanguage,
+	); err != nil {
+		if err == pgx.ErrNoRows {
+			return fmt.Errorf("not found")
+		}
+		return err
+	}
 
-	// switch language {
-	// case "ru":
-	// 	templateId = "d-91e781b2d85d4bbea36b5726e43379fd"
-	// case "es":
-	// 	templateId = "d-57743abff2fa46db8273ec5e3f387ed9"
-	// case "en":
-	// 	templateId = "d-7bc0a43341cb481aa1432d599bbbd1f6"
-	// case "he":
-	// 	templateId = "d-6352bc18e9e14e7f8db77de98c3d804c"
-	// }
+	if u.Email == nil {
+		return fmt.Errorf("email not sent to participant")
+	}
+
+	var templateId string
+
+	switch *u.EmailLanguage {
+	case "ru":
+		templateId = "d-91e781b2d85d4bbea36b5726e43379fd"
+	case "es":
+		templateId = "d-57743abff2fa46db8273ec5e3f387ed9"
+	case "en":
+		templateId = "d-7bc0a43341cb481aa1432d599bbbd1f6"
+	case "he":
+		templateId = "d-6352bc18e9e14e7f8db77de98c3d804c"
+	}
+
+	if templateId == "" {
+		return fmt.Errorf("no template found for user email language %s", *u.EmailLanguage)
+	}
+
+	mailErr := SendEmail(nil, nil, templateId, *u.Email, *u.FirstName, *u.LastName)
+
+	return mailErr
+}
+
+func SendEmail(fromName *string, fromEmail *string, templateId string, email string, firstname string, lastname string) error {
 
 	config, err := GetEnv()
 
