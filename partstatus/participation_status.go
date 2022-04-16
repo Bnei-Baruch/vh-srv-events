@@ -179,7 +179,7 @@ func (r *ParticipationStatusDB) CreateNewParticipationStatus(ctx *gin.Context) {
 }
 
 func (r *ParticipationStatusDB) UpdateParticipationStatusByID(ctx *gin.Context) {
-	u := participationStatus{}
+	u := partStatusWithNotification{}
 	if err := ctx.ShouldBindJSON(&u); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
@@ -190,7 +190,7 @@ func (r *ParticipationStatusDB) UpdateParticipationStatusByID(ctx *gin.Context) 
 
 	id := ctx.Param("id")
 
-	if err := updateParticipationStatusByID(r, ctx, u, id); err != nil {
+	if err := updateParticipationStatusByID(r, ctx, u.participationStatus, id); err != nil {
 
 		if err.Error() == "not found" {
 			ctx.JSON(http.StatusNotFound, gin.H{
@@ -214,6 +214,15 @@ func (r *ParticipationStatusDB) UpdateParticipationStatusByID(ctx *gin.Context) 
 		})
 		return
 	}
+
+	if u.Notification && u.NotificationType == "confirmation" {
+		intID, _ := strconv.Atoi(id)
+		emailErr := util.SendConfirmationEmail(ctx, r.db, intID)
+		if emailErr != nil {
+			fmt.Println("problem sending email in update participation status: %w", emailErr)
+		}
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{"message": "Participation Status updated successfully", "data": u, "success": true})
 }
 
