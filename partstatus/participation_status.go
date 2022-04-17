@@ -488,6 +488,9 @@ func buildAndGetWhereQuery(eventID string, keycloakID string) (string, string) {
 	whereString.WriteString(" WHERE")
 	whereCondition.WriteString("")
 
+	//deleted false query
+	whereCondition.WriteString(" participation_status.deleted=false")
+
 	// WHERE query generation based on parameters
 	if eventID != "" {
 		whereCondition.WriteString(fmt.Sprintf(" event_id=%s", eventID))
