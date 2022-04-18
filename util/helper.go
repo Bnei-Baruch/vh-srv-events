@@ -92,7 +92,7 @@ func SendEmail(fromName *string, fromEmail *string, templateId string, email str
 
 	from := mail.NewEmail(frName, frEmail)
 	to := mail.NewEmail(firstname+" "+lastname, email)
-	subject := "Test email"
+	subject := "A notification for you"
 
 	m := mail.NewV3MailInit(from, subject, to)
 

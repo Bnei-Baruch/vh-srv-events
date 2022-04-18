@@ -548,7 +548,7 @@ CREATE TABLE IF NOT EXISTS event_participation_option (
 );
 
 CREATE TABLE IF NOT EXISTS participation_status (
-	id                   SERIAL PRIMARY KEY,
+	id                   SERIAL,
     participation_option TEXT NOT NULL,
     participant_id       INT NOT NULL,
     event_id             INT NOT NULL,
@@ -559,7 +559,8 @@ CREATE TABLE IF NOT EXISTS participation_status (
     updated_at           TIMESTAMP WITH TIME ZONE DEFAULT now(),
     CONSTRAINT fk_participant_id FOREIGN KEY(participant_id) REFERENCES participant(id),
     CONSTRAINT fk_participation_option_name FOREIGN KEY(participation_option) REFERENCES participation_option(name),
-    CONSTRAINT fk_event_id FOREIGN KEY(event_id) REFERENCES event(id)  ON DELETE CASCADE
+    CONSTRAINT fk_event_id FOREIGN KEY(event_id) REFERENCES event(id)  ON DELETE CASCADE,
+    CONSTRAINT participation_status_pkey PRIMARY KEY (participant_id, event_id)
 );
 
 COMMIT;
