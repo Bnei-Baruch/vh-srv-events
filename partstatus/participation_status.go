@@ -493,7 +493,7 @@ func buildAndGetWhereQuery(eventID string, keycloakID string) (string, string) {
 
 	// WHERE query generation based on parameters
 	if eventID != "" {
-		whereCondition.WriteString(fmt.Sprintf(" event_id=%s", eventID))
+		whereCondition.WriteString(fmt.Sprintf(" AND event_id=%s", eventID))
 	}
 
 	if keycloakID != "" {
