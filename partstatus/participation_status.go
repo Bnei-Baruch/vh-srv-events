@@ -2,6 +2,7 @@ package partstatus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -136,6 +138,7 @@ func (r *ParticipationStatusDB) GetAllParticipationStatus(ctx *gin.Context) {
 	}
 
 	u, err := getAllParticipationStatus(r, ctx, intSkip, intLimit, eventID, keycloakID)
+	count, _ := getTotalParticipationStatusCount(r, ctx, eventID, keycloakID)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -144,7 +147,7 @@ func (r *ParticipationStatusDB) GetAllParticipationStatus(ctx *gin.Context) {
 		})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"message": "Fetched!", "data": u, "success": true})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Fetched!", "data": u, "totalCount": count, "success": true})
 }
 
 func (r *ParticipationStatusDB) CreateNewParticipationStatus(ctx *gin.Context) {
@@ -379,7 +382,23 @@ func createNewParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, re
 			if err == pgx.ErrNoRows {
 				return fmt.Errorf("no rows affected")
 			}
-			return err
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) {
+				fmt.Println(pgErr.Message)
+				// If the error is about a constraint violation,
+				if pgErr.Code == "23505" {
+					if err := r.db.QueryRow(ctx, `UPDATE participation_status SET participation_option=$1,updated_at=$2 WHERE participant_id=$3 AND event_id=$4 RETURNING id`,
+						*req.participationStatus.ParticipationOption, time.Now(), *req.participationStatus.ParticipantID, req.participationStatus.EventID).Scan(
+						&id,
+					); err != nil {
+						return fmt.Errorf("problem updating Participation Status: %w", err)
+					}
+				} else {
+					return fmt.Errorf("problem inserting Participation Status: %w", err)
+				}
+			} else {
+				return fmt.Errorf("problem inserting Participation Status: %w", err)
+			}
 		}
 
 		if req.Notification && req.NotificationType == "confirmation" {
@@ -393,6 +412,19 @@ func createNewParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, re
 	} else {
 		return fmt.Errorf("invalid values")
 	}
+}
+
+func getTotalParticipationStatusCount(r *ParticipationStatusDB, ctx *gin.Context, eventID string, keycloakID string) (int, error) {
+	var count int
+
+	userDbWhereQuery, _ := buildAndGetWhereQuery(eventID, keycloakID)
+
+	err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM participation_status 
+	LEFT JOIN participant ON participation_status.participant_id = participant.id`+userDbWhereQuery).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func deleteParticipationStatusByID(r *ParticipationStatusDB, ctx context.Context, id string) error {

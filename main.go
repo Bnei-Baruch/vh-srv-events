@@ -168,7 +168,7 @@ func (r *Router) Init() {
 
 	participationStatus := basePath.Group("/participation-status")
 	{
-		participationStatus.POST("/", r.participationStatus.CreateNewParticipationStatus)
+		participationStatus.POST("", r.participationStatus.CreateNewParticipationStatus)
 		participationStatus.GET("/:id", r.participationStatus.GetParticipationStatusByID)
 		participationStatus.PATCH("/:id", r.participationStatus.UpdateParticipationStatusByID)
 		participationStatus.DELETE("/:id", r.participationStatus.DeleteParticipationStatusByID)
