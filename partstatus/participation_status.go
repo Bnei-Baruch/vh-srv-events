@@ -115,6 +115,13 @@ func (r *ParticipationStatusDB) GetAllParticipationStatus(ctx *gin.Context) {
 	eventID := ctx.Query("eventid")
 	keycloakID := ctx.Query("kc_id")
 
+	email := ctx.Query("email")
+	gender := ctx.Query("gender")
+	country := ctx.Query("country")
+	firstName := ctx.Query("fname")
+	lastName := ctx.Query("lname")
+	partOption := ctx.Query("part-option")
+
 	if skip == "" {
 		skip = "0"
 	}
@@ -137,8 +144,8 @@ func (r *ParticipationStatusDB) GetAllParticipationStatus(ctx *gin.Context) {
 		return
 	}
 
-	u, err := getAllParticipationStatus(r, ctx, intSkip, intLimit, eventID, keycloakID)
-	count, _ := getTotalParticipationStatusCount(r, ctx, eventID, keycloakID)
+	u, err := getAllParticipationStatus(r, ctx, intSkip, intLimit, eventID, keycloakID, country, email, gender, partOption, firstName, lastName)
+	count, _ := getTotalParticipationStatusCount(r, ctx, eventID, keycloakID, country, email, gender, partOption, firstName, lastName)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -289,11 +296,11 @@ func getParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, id s
 	return u, nil
 }
 
-func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip int, limit int, eventID string, keycloakID string) (*[]participationStatusResponse, error) {
+func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip int, limit int, eventID string, keycloakID string, country string, email string, gender string, partOption string, firstName string, lastName string) (*[]participationStatusResponse, error) {
 
 	u := []participationStatusResponse{}
 
-	userDbWhereQuery, orderByQuery := buildAndGetWhereQuery(eventID, keycloakID)
+	userDbWhereQuery, orderByQuery := buildAndGetWhereQuery(eventID, keycloakID, country, email, gender, partOption, firstName, lastName)
 
 	rows, err := r.db.Query(ctx, `select 
 	participation_status.id,
@@ -414,10 +421,10 @@ func createNewParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, re
 	}
 }
 
-func getTotalParticipationStatusCount(r *ParticipationStatusDB, ctx *gin.Context, eventID string, keycloakID string) (int, error) {
+func getTotalParticipationStatusCount(r *ParticipationStatusDB, ctx *gin.Context, eventID string, keycloakID string, country string, email string, gender string, partOption string, firstName string, lastName string) (int, error) {
 	var count int
 
-	userDbWhereQuery, _ := buildAndGetWhereQuery(eventID, keycloakID)
+	userDbWhereQuery, _ := buildAndGetWhereQuery(eventID, keycloakID, country, email, gender, partOption, firstName, lastName)
 
 	err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM participation_status 
 	LEFT JOIN participant ON participation_status.participant_id = participant.id`+userDbWhereQuery).Scan(&count)
@@ -512,7 +519,7 @@ func prepareParticipationStatusCreateQuery(req participationStatus) (string, str
 	return concatedCreateString, concatedNumString, args
 }
 
-func buildAndGetWhereQuery(eventID string, keycloakID string) (string, string) {
+func buildAndGetWhereQuery(eventID string, keycloakID string, country string, email string, gender string, partOption string, firstName string, lastName string) (string, string) {
 
 	var whereString strings.Builder
 	var orderBy strings.Builder
@@ -526,6 +533,30 @@ func buildAndGetWhereQuery(eventID string, keycloakID string) (string, string) {
 	// WHERE query generation based on parameters
 	if eventID != "" {
 		whereCondition.WriteString(fmt.Sprintf(" AND event_id=%s", eventID))
+	}
+
+	if country != "" {
+		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participant.country) LIKE LOWER('%%%s%%')", country))
+	}
+
+	if email != "" {
+		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participant.email) LIKE LOWER('%%%s%%')", email))
+	}
+
+	if gender != "" {
+		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participant.gender) LIKE LOWER('%%%s%%')", gender))
+	}
+
+	if partOption != "" {
+		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participation_option) LIKE LOWER('%%%s%%')", partOption))
+	}
+
+	if firstName != "" {
+		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participant.first_name) LIKE LOWER('%%%s%%')", firstName))
+	}
+
+	if lastName != "" {
+		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participant.last_name) LIKE LOWER('%%%s%%')", lastName))
 	}
 
 	if keycloakID != "" {
