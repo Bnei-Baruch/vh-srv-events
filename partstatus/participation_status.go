@@ -567,7 +567,7 @@ func buildAndGetWhereQuery(eventID string, keycloakID string, country string, em
 		}
 	}
 
-	orderBy.WriteString(fmt.Sprintf(" ORDER BY created_at %s", "asc"))
+	orderBy.WriteString(fmt.Sprintf(" ORDER BY created_at %s", "desc"))
 
 	if whereCondition.String() != "" {
 		whereString.WriteString(whereCondition.String())
