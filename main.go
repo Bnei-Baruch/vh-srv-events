@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"vh-srv-event/analytics"
 	"vh-srv-event/audience"
 	"vh-srv-event/broadcasturl"
 	"vh-srv-event/event"
@@ -34,6 +35,7 @@ type Controllers struct {
 	EventPartOption     event.EventPartOption
 	ParticipationStatus partstatus.ParticipationStatus
 	Notification        notification.Notification
+	Analytics           analytics.Analytics
 }
 
 type Router struct {
@@ -50,6 +52,7 @@ type Router struct {
 	eventPartOption     event.EventPartOption
 	participationStatus partstatus.ParticipationStatus
 	eventEmail          notification.Notification
+	analytics           analytics.Analytics
 }
 
 func NewRouter(server *gin.Engine, controller Controllers) *Router {
@@ -67,6 +70,7 @@ func NewRouter(server *gin.Engine, controller Controllers) *Router {
 		controller.EventPartOption,
 		controller.ParticipationStatus,
 		controller.Notification,
+		controller.Analytics,
 	}
 }
 func (r *Router) Init() {
@@ -181,6 +185,12 @@ func (r *Router) Init() {
 		emailNotification.POST("/event", r.eventEmail.SendEventEmail)
 	}
 
+	//Analytics
+	analytics := basePath.Group("/analytics")
+	{
+		analytics.GET("/participants", r.analytics.PartAnalytics)
+	}
+
 }
 
 func main() {
@@ -218,6 +228,7 @@ func main() {
 	event := event.NewEvent(conn)
 	participationStatus := partstatus.NewParticipationStatus(conn)
 	notification := notification.NewNotification(conn)
+	analytics := analytics.NewAnalytics(conn)
 
 	r := NewRouter(route, Controllers{
 		Participant:         participant,
@@ -232,6 +243,7 @@ func main() {
 		EventPartOption:     eventPartOption,
 		ParticipationStatus: participationStatus,
 		Notification:        notification,
+		Analytics:           analytics,
 	})
 
 	r.Init()
