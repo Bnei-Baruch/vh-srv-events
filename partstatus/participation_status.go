@@ -544,7 +544,7 @@ func buildAndGetWhereQuery(eventID string, keycloakID string, country string, em
 	}
 
 	if gender != "" {
-		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participant.gender) LIKE LOWER('%%%s%%')", gender))
+		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participant.gender)=LOWER('%s')", gender))
 	}
 
 	if partOption != "" {
