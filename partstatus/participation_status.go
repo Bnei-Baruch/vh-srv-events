@@ -536,7 +536,7 @@ func buildAndGetWhereQuery(eventID string, keycloakID string, country string, em
 	}
 
 	if country != "" {
-		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participant.country) LIKE LOWER('%%%s%%')", country))
+		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participant.country)=LOWER('%s')", country))
 	}
 
 	if email != "" {
