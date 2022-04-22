@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/gocarina/gocsv"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -121,6 +122,11 @@ func (r *ParticipationStatusDB) GetAllParticipationStatus(ctx *gin.Context) {
 	firstName := ctx.Query("fname")
 	lastName := ctx.Query("lname")
 	partOption := ctx.Query("part-option")
+	isCSVReq := ctx.Query("csv")
+	if isCSVReq != "" && isCSVReq != "false" && isCSVReq != "true" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid csv value! Accepted value is either true or false"})
+		return
+	}
 
 	if skip == "" {
 		skip = "0"
@@ -154,7 +160,16 @@ func (r *ParticipationStatusDB) GetAllParticipationStatus(ctx *gin.Context) {
 		})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"message": "Fetched!", "data": u, "totalCount": count, "success": true})
+
+	if isCSVReq == "true" {
+		ctx.Writer.Header().Add("Content-Disposition", `attachment; filename=`+time.Now().Format("2006-01-02T15:04:05")+".csv")
+		gocsv.Marshal(u, ctx.Writer)
+		ctx.Status(http.StatusOK)
+		return
+	} else {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Fetched!", "data": u, "totalCount": count, "success": true})
+		return
+	}
 }
 
 func (r *ParticipationStatusDB) CreateNewParticipationStatus(ctx *gin.Context) {
