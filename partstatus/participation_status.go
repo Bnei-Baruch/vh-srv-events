@@ -137,21 +137,25 @@ func (r *ParticipationStatusDB) GetAllParticipationStatus(ctx *gin.Context) {
 	}
 
 	// String conversion to int
-	intSkip, err := strconv.Atoi(skip)
-	if err != nil {
+	_, sErr := strconv.Atoi(skip)
+	if sErr != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid skip value! Accepted value is INTEGER", "success": false})
 		return
 	}
 
 	// String conversion to int
-	intLimit, err := strconv.Atoi(limit)
-	if err != nil {
+	_, lErr := strconv.Atoi(limit)
+	if lErr != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid limit value! Accepted value is INTEGER", "success": false})
 		return
 	}
 
-	u, err := getAllParticipationStatus(r, ctx, intSkip, intLimit, eventID, keycloakID, country, email, gender, partOption, firstName, lastName)
-	count, _ := getTotalParticipationStatusCount(r, ctx, eventID, keycloakID, country, email, gender, partOption, firstName, lastName)
+	if isCSVReq == "true" {
+		// ALL will fetch all the entries in the DB
+		limit = "ALL"
+	}
+
+	u, err := getAllParticipationStatus(r, ctx, skip, limit, eventID, keycloakID, country, email, gender, partOption, firstName, lastName)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -167,6 +171,7 @@ func (r *ParticipationStatusDB) GetAllParticipationStatus(ctx *gin.Context) {
 		ctx.Status(http.StatusOK)
 		return
 	} else {
+		count, _ := getTotalParticipationStatusCount(r, ctx, eventID, keycloakID, country, email, gender, partOption, firstName, lastName)
 		ctx.JSON(http.StatusOK, gin.H{"message": "Fetched!", "data": u, "totalCount": count, "success": true})
 		return
 	}
@@ -311,9 +316,11 @@ func getParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, id s
 	return u, nil
 }
 
-func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip int, limit int, eventID string, keycloakID string, country string, email string, gender string, partOption string, firstName string, lastName string) (*[]participationStatusResponse, error) {
+func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip string, limit string, eventID string, keycloakID string, country string, email string, gender string, partOption string, firstName string, lastName string) (*[]participationStatusResponse, error) {
 
 	u := []participationStatusResponse{}
+
+	limitOffsetString := fmt.Sprintf(" LIMIT %s OFFSET %s", limit, skip)
 
 	userDbWhereQuery, orderByQuery := buildAndGetWhereQuery(eventID, keycloakID, country, email, gender, partOption, firstName, lastName)
 
@@ -348,8 +355,7 @@ func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip 
 	participant.last_name
 	FROM participation_status 
 	LEFT JOIN event ON participation_status.event_id = event.id LEFT JOIN participant ON participation_status.participant_id = participant.id`+userDbWhereQuery+
-		orderByQuery+
-		" LIMIT $1 OFFSET $2", limit, skip)
+		orderByQuery+limitOffsetString)
 	if err != nil {
 		fmt.Println("--error-while-executing-query", err)
 		return &u, err
