@@ -197,12 +197,21 @@ func (r *ParticipationStatusDB) CreateNewParticipationStatus(ctx *gin.Context) {
 		return
 	}
 
-	if err := createNewParticipationStatus(r, ctx, s); err != nil {
+	id, err := createNewParticipationStatus(r, ctx, s)
+
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"success": false,
 		})
 		return
+	}
+
+	if s.Notification && s.NotificationType == "confirmation" {
+		emailErr := util.SendConfirmationEmail(ctx, r.db, id)
+		if emailErr != nil {
+			fmt.Println("registered user to event but problem sending email: %w", emailErr)
+		}
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{"message": "Created new Participation Status!", "data": s, "success": true})
@@ -397,7 +406,7 @@ func updateParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, r
 	}
 }
 
-func createNewParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, req partStatusWithNotification) error {
+func createNewParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, req partStatusWithNotification) (int, error) {
 
 	createString, numString, createQueryArgs := prepareParticipationStatusCreateQuery(req.participationStatus)
 
@@ -408,7 +417,7 @@ func createNewParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, re
 			&id,
 		); err != nil {
 			if err == pgx.ErrNoRows {
-				return fmt.Errorf("no rows affected")
+				return id, fmt.Errorf("no rows affected")
 			}
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) {
@@ -419,26 +428,19 @@ func createNewParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, re
 						*req.participationStatus.ParticipationOption, time.Now(), *req.participationStatus.ParticipantID, req.participationStatus.EventID).Scan(
 						&id,
 					); err != nil {
-						return fmt.Errorf("problem updating Participation Status: %w", err)
+						return id, fmt.Errorf("problem updating Participation Status: %w", err)
 					}
 				} else {
-					return fmt.Errorf("problem inserting Participation Status: %w", err)
+					return id, fmt.Errorf("problem inserting Participation Status: %w", err)
 				}
 			} else {
-				return fmt.Errorf("problem inserting Participation Status: %w", err)
+				return id, fmt.Errorf("problem inserting Participation Status: %w", err)
 			}
 		}
 
-		if req.Notification && req.NotificationType == "confirmation" {
-			emailErr := util.SendConfirmationEmail(ctx, r.db, id)
-			if emailErr != nil {
-				return fmt.Errorf("registered user to event but problem sending email: %w", emailErr)
-			}
-		}
-
-		return nil
+		return id, nil
 	} else {
-		return fmt.Errorf("invalid values")
+		return id, fmt.Errorf("invalid values")
 	}
 }
 
