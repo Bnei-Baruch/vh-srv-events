@@ -1,8 +1,10 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"os"
 
 	part "vh-srv-event/participant"
 
@@ -117,4 +119,25 @@ func GetEnv() (config, error) {
 		return Config, err
 	}
 	return Config, nil
+}
+
+func GetPgxPoolDBConnection(ctx context.Context) (*pgxpool.Pool, error) {
+
+	config, err := GetEnv()
+
+	if err != nil {
+		log.Fatalln("Error while fetching env file")
+	}
+
+	databaseURL := "postgres://" + config.DBUser + ":" + config.DBPass + "@" + config.DBHost + ":" + config.DBPort + "/" + config.DBName
+
+	conn, err := pgxpool.Connect(ctx, databaseURL)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Connection url: %s", databaseURL)
+		os.Exit(1)
+	}
+
+	return conn, nil
 }

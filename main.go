@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -19,7 +20,6 @@ import (
 	"vh-srv-event/util"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type Controllers struct {
@@ -199,21 +199,19 @@ func main() {
 	config, err := util.GetEnv()
 
 	if err != nil {
-		fmt.Println(err)
-		return
+		log.Fatalln("Error while fetching env file")
 	}
-
-	databaseURL := "postgres://" + config.DBUser + ":" + config.DBPass + "@" + config.DBHost + ":" + config.DBPort + "/" + config.DBName
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	conn, err := pgxpool.Connect(ctx, databaseURL)
+	conn, err := util.GetPgxPoolDBConnection(ctx)
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		fmt.Fprintf(os.Stderr, "Connection url: %s", databaseURL)
 		os.Exit(1)
 	}
+
 	defer conn.Close()
 
 	participant := part.NewParticipant(conn)

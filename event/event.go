@@ -32,7 +32,7 @@ type eventResponse struct {
 	IsUserRegistered     *bool                   `json:"is_user_registered,omitempty"`
 }
 
-type event struct {
+type EventStruct struct {
 	RegistrationRequired *bool      `json:"registration_required" db:"registration_required"`
 	RegistrationStatus   *string    `json:"registration_status" db:"registration_status"`
 	Audience             *string    `json:"audience" db:"audience"`
@@ -129,7 +129,7 @@ func (r *EventDB) GetAllEvent(ctx *gin.Context) {
 }
 
 func (r *EventDB) CreateNewEvent(ctx *gin.Context) {
-	s := event{}
+	s := EventStruct{}
 	if err := ctx.ShouldBindJSON(&s); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
@@ -160,7 +160,7 @@ func (r *EventDB) CreateNewEvent(ctx *gin.Context) {
 }
 
 func (r *EventDB) UpdateEventByID(ctx *gin.Context) {
-	u := event{}
+	u := EventStruct{}
 	if err := ctx.ShouldBindJSON(&u); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
@@ -344,7 +344,7 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string,
 	return &u, rows.Err()
 }
 
-func updateEventByID(r *EventDB, ctx *gin.Context, req event, id string) error {
+func updateEventByID(r *EventDB, ctx *gin.Context, req EventStruct, id string) error {
 
 	toUpdate, toUpdateArgs := prepareEventUpdateQuery(req)
 
@@ -365,7 +365,7 @@ func updateEventByID(r *EventDB, ctx *gin.Context, req event, id string) error {
 	}
 }
 
-func CreateEvent(r *EventDB, ctx *gin.Context, req event) error {
+func CreateEvent(r *EventDB, ctx *gin.Context, req EventStruct) error {
 
 	createString, numString, createQueryArgs := prepareEventCreateQuery(req)
 
@@ -397,7 +397,7 @@ func deleteHardEventByID(r *EventDB, ctx context.Context, id string) error {
 	return err
 }
 
-func prepareEventUpdateQuery(req event) (string, []interface{}) {
+func prepareEventUpdateQuery(req EventStruct) (string, []interface{}) {
 	var updateStrings []string
 	var args []interface{}
 
@@ -456,7 +456,7 @@ func prepareEventUpdateQuery(req event) (string, []interface{}) {
 	return updateArgument, args
 }
 
-func prepareEventCreateQuery(req event) (string, string, []interface{}) {
+func prepareEventCreateQuery(req EventStruct) (string, string, []interface{}) {
 	var createStrings []string
 	var numString []string
 	var args []interface{}
