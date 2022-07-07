@@ -286,6 +286,7 @@ func getPartById(r *ParticipantDB, ctx *gin.Context, id string) (partResponse, e
 	gender,
 	email,
 	country,
+	phone_number,
 	first_name,
 	last_name,
 	created_at,
@@ -299,6 +300,7 @@ func getPartById(r *ParticipantDB, ctx *gin.Context, id string) (partResponse, e
 		&u.Gender,
 		&u.Email,
 		&u.Country,
+		&u.PhoneNumber,
 		&u.FirstName,
 		&u.LastName,
 		&u.CreatedAt,
@@ -323,6 +325,7 @@ func getPartByEmail(r *ParticipantDB, ctx *gin.Context, email string) (partRespo
 	gender,
 	email,
 	country,
+	phone_number,
 	first_name,
 	last_name,
 	created_at,
@@ -336,6 +339,7 @@ func getPartByEmail(r *ParticipantDB, ctx *gin.Context, email string) (partRespo
 		&u.Gender,
 		&u.Email,
 		&u.Country,
+		&u.PhoneNumber,
 		&u.FirstName,
 		&u.LastName,
 		&u.CreatedAt,
@@ -360,6 +364,7 @@ func getPartByKeycloakID(r *ParticipantDB, ctx *gin.Context, id string) (partRes
 	gender,
 	email,
 	country,
+	phone_number,
 	first_name,
 	last_name,
 	created_at,
@@ -373,6 +378,7 @@ func getPartByKeycloakID(r *ParticipantDB, ctx *gin.Context, id string) (partRes
 		&u.Gender,
 		&u.Email,
 		&u.Country,
+		&u.PhoneNumber,
 		&u.FirstName,
 		&u.LastName,
 		&u.CreatedAt,
@@ -416,6 +422,7 @@ func GetAllPart(r *ParticipantDB, ctx *gin.Context, skip int, limit int, eventId
 			p.gender,
 			p.email,
 			p.country,
+			p.phone_number,
 			p.first_name,
 			p.last_name,
 			p.created_at,
@@ -434,6 +441,7 @@ func GetAllPart(r *ParticipantDB, ctx *gin.Context, skip int, limit int, eventId
 			gender,
 			email,
 			country,
+			phone_number,
 			first_name,
 			last_name,
 			created_at,
@@ -444,7 +452,7 @@ func GetAllPart(r *ParticipantDB, ctx *gin.Context, skip int, limit int, eventId
 	rows, _ := r.db.Query(ctx, query)
 	for rows.Next() {
 		var d partResponse
-		err := rows.Scan(&d.ID, &d.KeycloakID, &d.FirstLanguage, &d.EmailLanguage, &d.DOB, &d.Gender, &d.Email, &d.Country, &d.FirstName, &d.LastName, &d.CreatedAt, &d.UpdatedAt)
+		err := rows.Scan(&d.ID, &d.KeycloakID, &d.FirstLanguage, &d.EmailLanguage, &d.DOB, &d.Gender, &d.Email, &d.Country, &d.PhoneNumber, &d.FirstName, &d.LastName, &d.CreatedAt, &d.UpdatedAt)
 		if err != nil {
 			return &u, err
 		}
