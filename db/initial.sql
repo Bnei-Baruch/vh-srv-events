@@ -462,6 +462,7 @@ CREATE TABLE IF NOT EXISTS participant (
     gender                  TEXT,
     email                   TEXT NOT NULL UNIQUE,
     country                 TEXT,
+    phone_number            TEXT,
     first_name              TEXT NOT NULL,
     last_name               TEXT NOT NULL,
 	created_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
