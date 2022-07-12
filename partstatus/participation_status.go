@@ -46,6 +46,7 @@ type participationStatusResponse struct {
 	DOB           *time.Time `json:"part_dob,omitempty" db:"dob"`
 	Gender        *string    `json:"part_gender,omitempty" db:"gender"`
 	Email         *string    `json:"part_email" db:"email"`
+	PhoneNumber   *string    `json:"part_phone_number" db:"phone_number"`
 	Country       *string    `json:"part_country,omitempty" db:"country"`
 	FirstName     *string    `json:"part_first_name" db:"first_name"`
 	LastName      *string    `json:"part_last_name" db:"last_name"`
@@ -308,6 +309,7 @@ func getParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, id s
 	participant.dob,
 	participant.gender,
 	participant.email,
+	participant.phone_number,
 	participant.country,
 	participant.first_name,
 	participant.last_name
@@ -315,7 +317,7 @@ func getParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, id s
 	LEFT JOIN event ON participation_status.event_id = event.id LEFT JOIN participant ON participation_status.participant_id = participant.id where participation_status.id = $1`, id).Scan(
 		&u.ID, &u.ParticipationOption, &u.ParticipantID, &u.EventID, &u.Confirmed, &u.RegistrationDate, &u.Deleted, &u.CreatedAt, &u.UpdatedAt,
 		&u.RegistrationRequired, &u.RegistrationStatus, &u.Audience, &u.Slug, &u.Name, &u.Logo, &u.Content, &u.StartsOn, &u.EndsOn, &u.DateConfirmed,
-		&u.KeycloakID, &u.FirstLanguage, &u.EmailLanguage, &u.DOB, &u.Gender, &u.Email, &u.Country, &u.FirstName, &u.LastName,
+		&u.KeycloakID, &u.FirstLanguage, &u.EmailLanguage, &u.DOB, &u.Gender, &u.Email, &u.PhoneNumber, &u.Country, &u.FirstName, &u.LastName,
 	); err != nil {
 		if err == pgx.ErrNoRows {
 			return participationStatusResponse{}, fmt.Errorf("not found")
@@ -359,6 +361,7 @@ func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip 
 	participant.dob,
 	participant.gender,
 	participant.email,
+	participant.phone_number,
 	participant.country,
 	participant.first_name,
 	participant.last_name
@@ -375,7 +378,7 @@ func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip 
 		err := rows.Scan(
 			&d.ID, &d.ParticipationOption, &d.ParticipantID, &d.EventID, &d.Confirmed, &d.RegistrationDate, &d.Deleted, &d.CreatedAt, &d.UpdatedAt,
 			&d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.StartsOn, &d.EndsOn, &d.DateConfirmed,
-			&d.KeycloakID, &d.FirstLanguage, &d.EmailLanguage, &d.DOB, &d.Gender, &d.Email, &d.Country, &d.FirstName, &d.LastName,
+			&d.KeycloakID, &d.FirstLanguage, &d.EmailLanguage, &d.DOB, &d.Gender, &d.Email, &d.PhoneNumber, &d.Country, &d.FirstName, &d.LastName,
 		)
 		if err != nil {
 			return &u, err

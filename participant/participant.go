@@ -23,6 +23,7 @@ type partResponse struct {
 	Gender        *string    `json:"gender,omitempty" db:"gender"`
 	Email         *string    `json:"email" db:"email"`
 	Country       *string    `json:"country,omitempty" db:"country"`
+	PhoneNumber   *string    `json:"phone_number,omitempty" db:"phone_number"`
 	FirstName     *string    `json:"first_name" db:"first_name"`
 	LastName      *string    `json:"last_name" db:"last_name"`
 	CreatedAt     *time.Time `json:"created_at" db:"created_at"`
@@ -37,6 +38,7 @@ type Part struct {
 	Gender        *string    `json:"gender,omitempty" db:"gender"`
 	Email         *string    `json:"email" db:"email" validate:"required,email"`
 	Country       *string    `json:"country,omitempty" db:"country"`
+	PhoneNumber   *string    `json:"phone_number,omitempty" db:"phone_number"`
 	FirstName     *string    `json:"first_name" db:"first_name" validate:"required"`
 	LastName      *string    `json:"last_name" db:"last_name" validate:"required"`
 }
@@ -284,6 +286,7 @@ func getPartById(r *ParticipantDB, ctx *gin.Context, id string) (partResponse, e
 	gender,
 	email,
 	country,
+	phone_number,
 	first_name,
 	last_name,
 	created_at,
@@ -297,6 +300,7 @@ func getPartById(r *ParticipantDB, ctx *gin.Context, id string) (partResponse, e
 		&u.Gender,
 		&u.Email,
 		&u.Country,
+		&u.PhoneNumber,
 		&u.FirstName,
 		&u.LastName,
 		&u.CreatedAt,
@@ -321,6 +325,7 @@ func getPartByEmail(r *ParticipantDB, ctx *gin.Context, email string) (partRespo
 	gender,
 	email,
 	country,
+	phone_number,
 	first_name,
 	last_name,
 	created_at,
@@ -334,6 +339,7 @@ func getPartByEmail(r *ParticipantDB, ctx *gin.Context, email string) (partRespo
 		&u.Gender,
 		&u.Email,
 		&u.Country,
+		&u.PhoneNumber,
 		&u.FirstName,
 		&u.LastName,
 		&u.CreatedAt,
@@ -358,6 +364,7 @@ func getPartByKeycloakID(r *ParticipantDB, ctx *gin.Context, id string) (partRes
 	gender,
 	email,
 	country,
+	phone_number,
 	first_name,
 	last_name,
 	created_at,
@@ -371,6 +378,7 @@ func getPartByKeycloakID(r *ParticipantDB, ctx *gin.Context, id string) (partRes
 		&u.Gender,
 		&u.Email,
 		&u.Country,
+		&u.PhoneNumber,
 		&u.FirstName,
 		&u.LastName,
 		&u.CreatedAt,
@@ -414,6 +422,7 @@ func GetAllPart(r *ParticipantDB, ctx *gin.Context, skip int, limit int, eventId
 			p.gender,
 			p.email,
 			p.country,
+			p.phone_number,
 			p.first_name,
 			p.last_name,
 			p.created_at,
@@ -432,6 +441,7 @@ func GetAllPart(r *ParticipantDB, ctx *gin.Context, skip int, limit int, eventId
 			gender,
 			email,
 			country,
+			phone_number,
 			first_name,
 			last_name,
 			created_at,
@@ -442,7 +452,7 @@ func GetAllPart(r *ParticipantDB, ctx *gin.Context, skip int, limit int, eventId
 	rows, _ := r.db.Query(ctx, query)
 	for rows.Next() {
 		var d partResponse
-		err := rows.Scan(&d.ID, &d.KeycloakID, &d.FirstLanguage, &d.EmailLanguage, &d.DOB, &d.Gender, &d.Email, &d.Country, &d.FirstName, &d.LastName, &d.CreatedAt, &d.UpdatedAt)
+		err := rows.Scan(&d.ID, &d.KeycloakID, &d.FirstLanguage, &d.EmailLanguage, &d.DOB, &d.Gender, &d.Email, &d.Country, &d.PhoneNumber, &d.FirstName, &d.LastName, &d.CreatedAt, &d.UpdatedAt)
 		if err != nil {
 			return &u, err
 		}
@@ -530,6 +540,10 @@ func prepareParticipantUpdateQuery(req Part) (string, []interface{}) {
 		updateStrings = append(updateStrings, fmt.Sprintf("country=$%d", len(updateStrings)+1))
 		args = append(args, *req.Country)
 	}
+	if req.PhoneNumber != nil {
+		updateStrings = append(updateStrings, fmt.Sprintf("phone_number=$%d", len(updateStrings)+1))
+		args = append(args, *req.PhoneNumber)
+	}
 	if req.FirstName != nil {
 		updateStrings = append(updateStrings, fmt.Sprintf("first_name=$%d", len(updateStrings)+1))
 		args = append(args, *req.FirstName)
@@ -588,6 +602,11 @@ func prepareParticipantCreateQuery(req Part) (string, string, []interface{}) {
 		createStrings = append(createStrings, "country")
 		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
 		args = append(args, *req.Country)
+	}
+	if req.PhoneNumber != nil {
+		createStrings = append(createStrings, "phone_number")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.PhoneNumber)
 	}
 	if req.FirstName != nil {
 		createStrings = append(createStrings, "first_name")
