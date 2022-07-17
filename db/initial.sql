@@ -520,6 +520,7 @@ CREATE TABLE IF NOT EXISTS event (
 	starts_on               TIMESTAMP WITH TIME ZONE NOT NULL,
 	ends_on                 TIMESTAMP WITH TIME ZONE NOT NULL,
     date_confirmed          BOOLEAN NOT NULL DEFAULT false,
+    archive_link            TEXT,
 	created_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
 	updated_at              TIMESTAMP WITH TIME ZONE DEFAULT now(),
     CONSTRAINT fk_audience_name FOREIGN KEY(audience) REFERENCES audience(name)
