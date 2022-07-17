@@ -27,6 +27,7 @@ type eventResponse struct {
 	StartsOn             *time.Time              `json:"starts_on" db:"starts_on"`
 	EndsOn               *time.Time              `json:"ends_on" db:"ends_on"`
 	DateConfirmed        *bool                   `json:"date_confirmed" db:"date_confirmed"`
+	ArchiveLink          *string                 `json:"archive_link" db:"archive_link"`
 	CreatedAt            *time.Time              `json:"created_at" db:"created_at"`
 	UpdatedAt            *time.Time              `json:"updated_at" db:"updated_at"`
 	IsUserRegistered     *bool                   `json:"is_user_registered,omitempty"`
@@ -44,6 +45,7 @@ type event struct {
 	StartsOn             *time.Time `json:"starts_on" db:"starts_on" validate:"required"`
 	EndsOn               *time.Time `json:"ends_on" db:"ends_on" validate:"required"`
 	DateConfirmed        *bool      `json:"date_confirmed" db:"date_confirmed"`
+	ArchiveLink          *string    `json:"archive_link" db:"archive_link"`
 }
 
 type Event interface {
@@ -162,6 +164,14 @@ func (r *EventDB) CreateNewEvent(ctx *gin.Context) {
 func (r *EventDB) UpdateEventByID(ctx *gin.Context) {
 	u := event{}
 	if err := ctx.ShouldBindJSON(&u); err != nil {
+		if err.Error() == "EOF" {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error":   "No data provided",
+				"success": false,
+			})
+			return
+		}
+
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error":   err.Error(),
 			"success": false,
@@ -243,6 +253,7 @@ func getEventByID(r *EventDB, ctx *gin.Context, id string) (eventResponse, error
 	starts_on,
 	ends_on,
 	date_confirmed,
+	archive_link,
 	created_at,
 	updated_at 
 	from event where id = $1`, id).Scan(
@@ -258,6 +269,7 @@ func getEventByID(r *EventDB, ctx *gin.Context, id string) (eventResponse, error
 		&u.StartsOn,
 		&u.EndsOn,
 		&u.DateConfirmed,
+		&u.ArchiveLink,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 	); err != nil {
@@ -298,6 +310,7 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string,
 			e.starts_on,
 			e.ends_on,
 			e.date_confirmed,
+			e.archive_link,
 			e.created_at,
 			e.updated_at,
 			CASE WHEN (SELECT COUNT(*) FROM participation_status as ps, participant as p %s and ps.participant_id = p.id and e.id = ps.event_id ) > 0 THEN true
@@ -321,6 +334,7 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string,
 		starts_on,
 		ends_on,
 		date_confirmed,
+		archive_link,
 		created_at,
 		updated_at 
 		from event`+whereQuery+" LIMIT %d OFFSET %d", limit, skip)
@@ -332,9 +346,9 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string,
 		var err error
 		// Applied these checks to handle extra output is_user_registered when email or kcID is passed
 		if email != "" || kcID != "" {
-			err = rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.Deleted, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.CreatedAt, &d.UpdatedAt, &d.IsUserRegistered)
+			err = rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.Deleted, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.ArchiveLink, &d.CreatedAt, &d.UpdatedAt, &d.IsUserRegistered)
 		} else {
-			err = rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.Deleted, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.CreatedAt, &d.UpdatedAt)
+			err = rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.Deleted, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.ArchiveLink, &d.CreatedAt, &d.UpdatedAt)
 		}
 		if err != nil {
 			return &u, err
@@ -445,6 +459,10 @@ func prepareEventUpdateQuery(req event) (string, []interface{}) {
 		updateStrings = append(updateStrings, fmt.Sprintf("date_confirmed=$%d", len(updateStrings)+1))
 		args = append(args, *req.DateConfirmed)
 	}
+	if req.ArchiveLink != nil {
+		updateStrings = append(updateStrings, fmt.Sprintf("archive_link=$%d", len(updateStrings)+1))
+		args = append(args, *req.ArchiveLink)
+	}
 
 	if len(args) != 0 {
 		updateStrings = append(updateStrings, fmt.Sprintf("updated_at=$%d", len(updateStrings)+1))
@@ -515,6 +533,11 @@ func prepareEventCreateQuery(req event) (string, string, []interface{}) {
 		createStrings = append(createStrings, "date_confirmed")
 		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
 		args = append(args, *req.DateConfirmed)
+	}
+	if req.ArchiveLink != nil {
+		createStrings = append(createStrings, "archive_link")
+		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
+		args = append(args, *req.ArchiveLink)
 	}
 
 	concatedCreateString := strings.Join(createStrings, ",")
