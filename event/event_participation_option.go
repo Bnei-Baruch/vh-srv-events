@@ -15,12 +15,12 @@ import (
 )
 
 type eventPartOptionResponse struct {
-	ID                  *int       `json:"id" db:"id"`
-	EventID             *int       `json:"event_id" db:"event_id"`
-	ParticipationOption *string    `json:"participation_option" db:"participation_option"`
-	Deleted             *bool      `json:"deleted" db:"deleted"`
-	CreatedAt           *time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt           *time.Time `json:"updated_at" db:"updated_at"`
+	ID                  *int       `json:"id,omitempty" db:"id"`
+	EventID             *int       `json:"event_id,omitempty" db:"event_id"`
+	ParticipationOption *string    `json:"participation_option,omitempty" db:"participation_option"`
+	Deleted             *bool      `json:"deleted,omitempty" db:"deleted"`
+	CreatedAt           *time.Time `json:"created_at,omitempty" db:"created_at"`
+	UpdatedAt           *time.Time `json:"updated_at,omitempty" db:"updated_at"`
 }
 
 type eventPartOption struct {

@@ -15,23 +15,24 @@ import (
 )
 
 type eventResponse struct {
-	ID                   *int                    `json:"id" db:"id"`
-	RegistrationRequired *bool                   `json:"registration_required" db:"registration_required"`
-	RegistrationStatus   *string                 `json:"registration_status" db:"registration_status"`
-	Audience             *string                 `json:"audience" db:"audience"`
-	Slug                 *string                 `json:"slug" db:"slug"`
-	Name                 *string                 `json:"name" db:"name"`
-	Logo                 *string                 `json:"logo,omitempty" db:"logo"`
-	Content              *map[string]interface{} `json:"content,omitempty" db:"content"`
-	Deleted              *bool                   `json:"deleted" db:"deleted"`
-	StartsOn             *time.Time              `json:"starts_on" db:"starts_on"`
-	EndsOn               *time.Time              `json:"ends_on" db:"ends_on"`
-	DateConfirmed        *bool                   `json:"date_confirmed" db:"date_confirmed"`
-	ArchiveLink          *string                 `json:"archive_link" db:"archive_link"`
-	Published            *bool                   `json:"published" db:"published"`
-	CreatedAt            *time.Time              `json:"created_at" db:"created_at"`
-	UpdatedAt            *time.Time              `json:"updated_at" db:"updated_at"`
-	IsUserRegistered     *bool                   `json:"is_user_registered,omitempty"`
+	ID                   *int                      `json:"id" db:"id"`
+	RegistrationRequired *bool                     `json:"registration_required" db:"registration_required"`
+	RegistrationStatus   *string                   `json:"registration_status" db:"registration_status"`
+	Audience             *string                   `json:"audience" db:"audience"`
+	Slug                 *string                   `json:"slug" db:"slug"`
+	Name                 *string                   `json:"name" db:"name"`
+	Logo                 *string                   `json:"logo,omitempty" db:"logo"`
+	Content              *map[string]interface{}   `json:"content,omitempty" db:"content"`
+	Deleted              *bool                     `json:"deleted" db:"deleted"`
+	StartsOn             *time.Time                `json:"starts_on" db:"starts_on"`
+	EndsOn               *time.Time                `json:"ends_on" db:"ends_on"`
+	DateConfirmed        *bool                     `json:"date_confirmed" db:"date_confirmed"`
+	ArchiveLink          *string                   `json:"archive_link" db:"archive_link"`
+	Published            *bool                     `json:"published" db:"published"`
+	CreatedAt            *time.Time                `json:"created_at" db:"created_at"`
+	UpdatedAt            *time.Time                `json:"updated_at" db:"updated_at"`
+	IsUserRegistered     *bool                     `json:"is_user_registered,omitempty"`
+	ParticipationOption  []eventPartOptionResponse `json:"participation_options,omitempty"`
 }
 
 type event struct {
@@ -282,6 +283,23 @@ func getEventByID(r *EventDB, ctx *gin.Context, id string) (eventResponse, error
 		}
 		return eventResponse{}, err
 	}
+
+	// Attach participation options for the event.
+	epo, err := r.db.Query(ctx, `select participation_option from event_participation_option where event_id = $1`, u.ID)
+
+	if err != nil {
+		return u, err
+	}
+
+	for epo.Next() {
+		var epoResponse eventPartOptionResponse
+		err = epo.Scan(&epoResponse.ParticipationOption)
+		if err != nil {
+			return u, err
+		}
+		u.ParticipationOption = append(u.ParticipationOption, epoResponse)
+	}
+
 	return u, nil
 }
 
@@ -359,6 +377,23 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string,
 		if err != nil {
 			return &u, err
 		}
+
+		// Attach participation options for the event.
+		epo, err := r.db.Query(ctx, `select participation_option from event_participation_option where event_id = $1`, d.ID)
+
+		if err != nil {
+			return &u, err
+		}
+
+		for epo.Next() {
+			var epoResponse eventPartOptionResponse
+			err = epo.Scan(&epoResponse.ParticipationOption)
+			if err != nil {
+				return &u, err
+			}
+			d.ParticipationOption = append(d.ParticipationOption, epoResponse)
+		}
+
 		u = append(u, d)
 	}
 	return &u, rows.Err()
