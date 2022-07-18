@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"vh-srv-event/partstatus"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -15,24 +16,25 @@ import (
 )
 
 type eventResponse struct {
-	ID                   *int                      `json:"id" db:"id"`
-	RegistrationRequired *bool                     `json:"registration_required" db:"registration_required"`
-	RegistrationStatus   *string                   `json:"registration_status" db:"registration_status"`
-	Audience             *string                   `json:"audience" db:"audience"`
-	Slug                 *string                   `json:"slug" db:"slug"`
-	Name                 *string                   `json:"name" db:"name"`
-	Logo                 *string                   `json:"logo,omitempty" db:"logo"`
-	Content              *map[string]interface{}   `json:"content,omitempty" db:"content"`
-	Deleted              *bool                     `json:"deleted" db:"deleted"`
-	StartsOn             *time.Time                `json:"starts_on" db:"starts_on"`
-	EndsOn               *time.Time                `json:"ends_on" db:"ends_on"`
-	DateConfirmed        *bool                     `json:"date_confirmed" db:"date_confirmed"`
-	ArchiveLink          *string                   `json:"archive_link" db:"archive_link"`
-	Published            *bool                     `json:"published" db:"published"`
-	CreatedAt            *time.Time                `json:"created_at" db:"created_at"`
-	UpdatedAt            *time.Time                `json:"updated_at" db:"updated_at"`
-	IsUserRegistered     *bool                     `json:"is_user_registered,omitempty"`
-	ParticipationOption  []eventPartOptionResponse `json:"participation_options,omitempty"`
+	ID                            *int                                                   `json:"id" db:"id"`
+	RegistrationRequired          *bool                                                  `json:"registration_required" db:"registration_required"`
+	RegistrationStatus            *string                                                `json:"registration_status" db:"registration_status"`
+	Audience                      *string                                                `json:"audience" db:"audience"`
+	Slug                          *string                                                `json:"slug" db:"slug"`
+	Name                          *string                                                `json:"name" db:"name"`
+	Logo                          *string                                                `json:"logo,omitempty" db:"logo"`
+	Content                       *map[string]interface{}                                `json:"content,omitempty" db:"content"`
+	Deleted                       *bool                                                  `json:"deleted" db:"deleted"`
+	StartsOn                      *time.Time                                             `json:"starts_on" db:"starts_on"`
+	EndsOn                        *time.Time                                             `json:"ends_on" db:"ends_on"`
+	DateConfirmed                 *bool                                                  `json:"date_confirmed" db:"date_confirmed"`
+	ArchiveLink                   *string                                                `json:"archive_link" db:"archive_link"`
+	Published                     *bool                                                  `json:"published" db:"published"`
+	CreatedAt                     *time.Time                                             `json:"created_at" db:"created_at"`
+	UpdatedAt                     *time.Time                                             `json:"updated_at" db:"updated_at"`
+	IsUserRegistered              *bool                                                  `json:"is_user_registered,omitempty"`
+	ParticipationOption           []eventPartOptionResponse                              `json:"participation_options,omitempty"`
+	UserParticipationOptionDetail partstatus.ParticipationStatusStructWithCreationDetail `json:"user_participation_details,omitempty"`
 }
 
 type event struct {
@@ -336,11 +338,18 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string,
 			e.published,
 			e.created_at,
 			e.updated_at,
+			participation_status.participation_option,
+			participation_status.confirmed,
+			participation_status.registration_date,
+			participation_status.deleted,
+			participation_status.created_at,
+			participation_status.updated_at,
 			CASE WHEN (SELECT COUNT(*) FROM participation_status as ps, participant as p %s and ps.participant_id = p.id and e.id = ps.event_id ) > 0 THEN true
 			ELSE false
 			END AS is_user_registered 
 			from event as e
-			LIMIT %d OFFSET %d`, emailOrKcQuery, limit, skip)
+			LEFT JOIN participation_status ON participation_status.participant_id = ( SELECT id FROM participant as p %s) and participation_status.event_id = e.id
+			LIMIT %d OFFSET %d`, emailOrKcQuery, emailOrKcQuery, limit, skip)
 	} else {
 		whereQuery := buildAndGetWhereEventQuery(slug)
 
@@ -370,7 +379,7 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string,
 		var err error
 		// Applied these checks to handle extra output is_user_registered when email or kcID is passed
 		if email != "" || kcID != "" {
-			err = rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.Deleted, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.ArchiveLink, &d.Published, &d.CreatedAt, &d.UpdatedAt, &d.IsUserRegistered)
+			err = rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.Deleted, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.ArchiveLink, &d.Published, &d.CreatedAt, &d.UpdatedAt, &d.UserParticipationOptionDetail.ParticipationOption, &d.UserParticipationOptionDetail.Confirmed, &d.UserParticipationOptionDetail.RegistrationDate, &d.UserParticipationOptionDetail.Deleted, &d.UserParticipationOptionDetail.CreatedAt, &d.UserParticipationOptionDetail.UpdatedAt, &d.IsUserRegistered)
 		} else {
 			err = rows.Scan(&d.ID, &d.RegistrationRequired, &d.RegistrationStatus, &d.Audience, &d.Slug, &d.Name, &d.Logo, &d.Content, &d.Deleted, &d.StartsOn, &d.EndsOn, &d.DateConfirmed, &d.ArchiveLink, &d.Published, &d.CreatedAt, &d.UpdatedAt)
 		}

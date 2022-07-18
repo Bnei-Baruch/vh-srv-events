@@ -52,13 +52,19 @@ type participationStatusResponse struct {
 	LastName      *string    `json:"part_last_name" db:"last_name"`
 }
 
-type participationStatus struct {
-	ParticipationOption *string    `json:"participation_option" db:"participation_option" validate:"required"`
-	ParticipantID       *int       `json:"participant_id" db:"participant_id" validate:"required"`
-	EventID             *int       `json:"event_id" db:"event_id" validate:"required"`
-	Confirmed           *bool      `json:"confirmed" db:"confirmed"`
-	RegistrationDate    *time.Time `json:"registration_date" db:"registration_date" validate:"required"`
-	Deleted             *bool      `json:"deleted" db:"deleted"`
+type ParticipationStatusStruct struct {
+	ParticipationOption *string    `json:"participation_option,omitempty" db:"participation_option" validate:"required"`
+	ParticipantID       *int       `json:"participant_id,omitempty" db:"participant_id" validate:"required"`
+	EventID             *int       `json:"event_id,omitempty" db:"event_id" validate:"required"`
+	Confirmed           *bool      `json:"confirmed,omitempty" db:"confirmed"`
+	RegistrationDate    *time.Time `json:"registration_date,omitempty" db:"registration_date" validate:"required"`
+	Deleted             *bool      `json:"deleted,omitempty" db:"deleted"`
+}
+
+type ParticipationStatusStructWithCreationDetail struct {
+	ParticipationStatusStruct
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
 
 type partStatusNotification struct {
@@ -67,7 +73,7 @@ type partStatusNotification struct {
 }
 
 type partStatusWithNotification struct {
-	participationStatus
+	ParticipationStatusStruct
 	partStatusNotification
 }
 
@@ -230,7 +236,7 @@ func (r *ParticipationStatusDB) UpdateParticipationStatusByID(ctx *gin.Context) 
 
 	id := ctx.Param("id")
 
-	if err := updateParticipationStatusByID(r, ctx, u.participationStatus, id); err != nil {
+	if err := updateParticipationStatusByID(r, ctx, u.ParticipationStatusStruct, id); err != nil {
 
 		if err.Error() == "not found" {
 			ctx.JSON(http.StatusNotFound, gin.H{
@@ -388,7 +394,7 @@ func getAllParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, skip 
 	return &u, rows.Err()
 }
 
-func updateParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, req participationStatus, id string) error {
+func updateParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, req ParticipationStatusStruct, id string) error {
 
 	toUpdate, toUpdateArgs := prepareParticipationStatusUpdateQuery(req)
 
@@ -411,7 +417,7 @@ func updateParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, r
 
 func createNewParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, req partStatusWithNotification) (int, error) {
 
-	createString, numString, createQueryArgs := prepareParticipationStatusCreateQuery(req.participationStatus)
+	createString, numString, createQueryArgs := prepareParticipationStatusCreateQuery(req.ParticipationStatusStruct)
 
 	var id int
 	if len(createQueryArgs) != 0 {
@@ -428,7 +434,7 @@ func createNewParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, re
 				// If the error is about a constraint violation,
 				if pgErr.Code == "23505" {
 					if err := r.db.QueryRow(ctx, `UPDATE participation_status SET participation_option=$1,updated_at=$2 WHERE participant_id=$3 AND event_id=$4 RETURNING id`,
-						*req.participationStatus.ParticipationOption, time.Now(), *req.participationStatus.ParticipantID, req.participationStatus.EventID).Scan(
+						*req.ParticipationStatusStruct.ParticipationOption, time.Now(), *req.ParticipationStatusStruct.ParticipantID, req.ParticipationStatusStruct.EventID).Scan(
 						&id,
 					); err != nil {
 						return id, fmt.Errorf("problem updating Participation Status: %w", err)
@@ -465,7 +471,7 @@ func deleteParticipationStatusByID(r *ParticipationStatusDB, ctx context.Context
 	return err
 }
 
-func prepareParticipationStatusUpdateQuery(req participationStatus) (string, []interface{}) {
+func prepareParticipationStatusUpdateQuery(req ParticipationStatusStruct) (string, []interface{}) {
 	var updateStrings []string
 	var args []interface{}
 
@@ -503,7 +509,7 @@ func prepareParticipationStatusUpdateQuery(req participationStatus) (string, []i
 	return updateArgument, args
 }
 
-func prepareParticipationStatusCreateQuery(req participationStatus) (string, string, []interface{}) {
+func prepareParticipationStatusCreateQuery(req ParticipationStatusStruct) (string, string, []interface{}) {
 	var createStrings []string
 	var numString []string
 	var args []interface{}
