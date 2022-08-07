@@ -174,7 +174,8 @@ func (r *Router) Init() {
 	{
 		participationStatus.POST("", r.participationStatus.CreateNewParticipationStatus)
 		participationStatus.GET("/:id", r.participationStatus.GetParticipationStatusByID)
-		participationStatus.PATCH("/:id", r.participationStatus.UpdateParticipationStatusByID)
+		participationStatus.PATCH("/kcid/:kcid/event_slug/:slug", r.participationStatus.UpdateParticipationStatus)
+		participationStatus.PATCH("/:id", r.participationStatus.UpdateParticipationStatus)
 		participationStatus.DELETE("/:id", r.participationStatus.DeleteParticipationStatusByID)
 	}
 	basePath.GET("/participation-statuses", r.participationStatus.GetAllParticipationStatus)
