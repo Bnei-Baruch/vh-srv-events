@@ -81,7 +81,7 @@ type ParticipationStatus interface {
 	GetParticipationStatusByID(ctx *gin.Context)
 	GetAllParticipationStatus(ctx *gin.Context)
 	CreateNewParticipationStatus(ctx *gin.Context)
-	UpdateParticipationStatusByID(ctx *gin.Context)
+	UpdateParticipationStatus(ctx *gin.Context)
 	DeleteParticipationStatusByID(ctx *gin.Context)
 }
 
@@ -224,7 +224,7 @@ func (r *ParticipationStatusDB) CreateNewParticipationStatus(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, gin.H{"message": "Created new Participation Status!", "data": s, "success": true})
 }
 
-func (r *ParticipationStatusDB) UpdateParticipationStatusByID(ctx *gin.Context) {
+func (r *ParticipationStatusDB) UpdateParticipationStatus(ctx *gin.Context) {
 	u := partStatusWithNotification{}
 	if err := ctx.ShouldBindJSON(&u); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -235,30 +235,68 @@ func (r *ParticipationStatusDB) UpdateParticipationStatusByID(ctx *gin.Context) 
 	}
 
 	id := ctx.Param("id")
+	kcID := ctx.Param("kcid")
+	eventSlug := ctx.Param("slug")
 
-	if err := updateParticipationStatusByID(r, ctx, u.ParticipationStatusStruct, id); err != nil {
-
-		if err.Error() == "not found" {
-			ctx.JSON(http.StatusNotFound, gin.H{
-				"error":   err.Error(),
-				"success": false,
-			})
-			return
-		}
-
-		if err.Error() == "invalid values" {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"error":   err.Error(),
-				"success": false,
-			})
-			return
-		}
-
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error":   err.Error(),
+	if id == "" && (kcID == "" || eventSlug == "") {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Missing required parameters",
 			"success": false,
 		})
 		return
+	}
+
+	if id != "" {
+		if err := updateParticipationStatusByID(r, ctx, u.ParticipationStatusStruct, id); err != nil {
+
+			if err.Error() == "not found" {
+				ctx.JSON(http.StatusNotFound, gin.H{
+					"error":   err.Error(),
+					"success": false,
+				})
+				return
+			}
+
+			if err.Error() == "invalid values" {
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"error":   err.Error(),
+					"success": false,
+				})
+				return
+			}
+
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error":   err.Error(),
+				"success": false,
+			})
+			return
+		}
+	} else {
+
+		if err := updateParticipationStatusByKcIDAndEventSlug(r, ctx, u.ParticipationStatusStruct, kcID, eventSlug); err != nil {
+
+			if err.Error() == "not found" {
+				ctx.JSON(http.StatusNotFound, gin.H{
+					"error":   err.Error(),
+					"success": false,
+				})
+				return
+			}
+
+			if err.Error() == "invalid values" {
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"error":   err.Error(),
+					"success": false,
+				})
+				return
+			}
+
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error":   err.Error(),
+				"success": false,
+			})
+			return
+		}
 	}
 
 	if u.Notification && u.NotificationType == "confirmation" {
@@ -415,6 +453,27 @@ func updateParticipationStatusByID(r *ParticipationStatusDB, ctx *gin.Context, r
 	}
 }
 
+func updateParticipationStatusByKcIDAndEventSlug(r *ParticipationStatusDB, ctx *gin.Context, req ParticipationStatusStruct, kcID string, eventSlug string) error {
+
+	toUpdate, toUpdateArgs := prepareParticipationStatusUpdateQuery(req)
+
+	if len(toUpdateArgs) != 0 {
+		updateRes, err := r.db.Exec(ctx, fmt.Sprintf(`UPDATE participation_status SET %s WHERE participant_id=(SELECT id FROM participant as p WHERE p.keycloak_id='%s') AND event_id=(SELECT id FROM event as e WHERE e.slug='%s')`, toUpdate, kcID, eventSlug),
+			toUpdateArgs...)
+		if err != nil {
+			return fmt.Errorf("problem updating Participation Status: %w", err)
+		}
+
+		if updateRes.RowsAffected() == 0 {
+			return fmt.Errorf("not found")
+		}
+
+		return nil
+	} else {
+		return fmt.Errorf("invalid values")
+	}
+}
+
 func createNewParticipationStatus(r *ParticipationStatusDB, ctx *gin.Context, req partStatusWithNotification) (int, error) {
 
 	createString, numString, createQueryArgs := prepareParticipationStatusCreateQuery(req.ParticipationStatusStruct)
@@ -498,6 +557,11 @@ func prepareParticipationStatusUpdateQuery(req ParticipationStatusStruct) (strin
 	if req.Deleted != nil {
 		updateStrings = append(updateStrings, fmt.Sprintf("deleted=$%d", len(updateStrings)+1))
 		args = append(args, *req.Deleted)
+		// Updating the deleted_at column in the database if deleted to true.
+		if *req.Deleted {
+			updateStrings = append(updateStrings, fmt.Sprintf("deleted_at=$%d", len(updateStrings)+1))
+			args = append(args, time.Now())
+		}
 	}
 	if len(args) != 0 {
 		updateStrings = append(updateStrings, fmt.Sprintf("updated_at=$%d", len(updateStrings)+1))
