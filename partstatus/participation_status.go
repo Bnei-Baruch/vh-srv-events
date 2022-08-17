@@ -557,11 +557,11 @@ func prepareParticipationStatusUpdateQuery(req ParticipationStatusStruct) (strin
 	if req.Deleted != nil {
 		updateStrings = append(updateStrings, fmt.Sprintf("deleted=$%d", len(updateStrings)+1))
 		args = append(args, *req.Deleted)
-		// Updating the deleted_at column in the database if deleted to true.
-		if *req.Deleted {
-			updateStrings = append(updateStrings, fmt.Sprintf("deleted_at=$%d", len(updateStrings)+1))
-			args = append(args, time.Now())
-		}
+		// Updating the deleted_at column in the database if deleted to true. # Implementation pending
+		// if *req.Deleted {
+		// 	updateStrings = append(updateStrings, fmt.Sprintf("deleted_at=$%d", len(updateStrings)+1))
+		// 	args = append(args, time.Now())
+		// }
 	}
 	if len(args) != 0 {
 		updateStrings = append(updateStrings, fmt.Sprintf("updated_at=$%d", len(updateStrings)+1))
