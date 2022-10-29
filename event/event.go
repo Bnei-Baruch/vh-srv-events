@@ -316,9 +316,9 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string,
 		var emailOrKcQuery string
 
 		if email != "" {
-			emailOrKcQuery = fmt.Sprintf("where p.email='%s'", email)
+			emailOrKcQuery = fmt.Sprintf("where p.email='%s' AND e.deleted=false", email)
 		} else {
-			emailOrKcQuery = fmt.Sprintf("where p.keycloak_id='%s'", kcID)
+			emailOrKcQuery = fmt.Sprintf("where p.keycloak_id='%s' AND e.deleted=false", kcID)
 		}
 
 		query = fmt.Sprintf(`select 
@@ -611,6 +611,8 @@ func buildAndGetWhereEventQuery(slug string) string {
 	var whereCondition strings.Builder
 	whereString.WriteString(" WHERE")
 	whereCondition.WriteString("")
+
+	whereCondition.WriteString(" deleted=false")
 
 	// WHERE query generation based on parameters
 	if slug != "" {
