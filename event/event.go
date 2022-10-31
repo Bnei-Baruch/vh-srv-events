@@ -316,9 +316,9 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string,
 		var emailOrKcQuery string
 
 		if email != "" {
-			emailOrKcQuery = fmt.Sprintf("where p.email='%s' AND e.deleted=false", email)
+			emailOrKcQuery = fmt.Sprintf("where p.email='%s'", email)
 		} else {
-			emailOrKcQuery = fmt.Sprintf("where p.keycloak_id='%s' AND e.deleted=false", kcID)
+			emailOrKcQuery = fmt.Sprintf("where p.keycloak_id='%s'", kcID)
 		}
 
 		query = fmt.Sprintf(`select 
@@ -344,11 +344,12 @@ func getAllEvent(r *EventDB, ctx *gin.Context, skip int, limit int, slug string,
 			participation_status.deleted,
 			participation_status.created_at,
 			participation_status.updated_at,
-			CASE WHEN (SELECT COUNT(*) FROM participation_status as ps, participant as p %s and ps.participant_id = p.id and e.id = ps.event_id ) > 0 THEN true
+			CASE WHEN (SELECT COUNT(*) FROM participation_status as ps, participant as p %s AND ps.participant_id = p.id AND e.id = ps.event_id ) > 0 THEN true
 			ELSE false
 			END AS is_user_registered 
 			from event as e
-			LEFT JOIN participation_status ON participation_status.participant_id = ( SELECT id FROM participant as p %s) and participation_status.event_id = e.id
+			LEFT JOIN participation_status ON participation_status.participant_id = ( SELECT id FROM participant as p %s) AND participation_status.event_id = e.id
+			WHERE e.deleted = false
 			LIMIT %d OFFSET %d`, emailOrKcQuery, emailOrKcQuery, limit, skip)
 	} else {
 		whereQuery := buildAndGetWhereEventQuery(slug)
@@ -616,7 +617,7 @@ func buildAndGetWhereEventQuery(slug string) string {
 
 	// WHERE query generation based on parameters
 	if slug != "" {
-		whereCondition.WriteString(fmt.Sprintf(" slug='%s'", slug))
+		whereCondition.WriteString(fmt.Sprintf(" AND slug='%s'", slug))
 	}
 
 	if whereCondition.String() != "" {
