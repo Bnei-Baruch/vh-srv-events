@@ -12,6 +12,7 @@ import (
 	"vh-srv-event/event"
 	"vh-srv-event/item"
 	"vh-srv-event/notification"
+	"vh-srv-event/operationtrace"
 	part "vh-srv-event/participant"
 	partoptn "vh-srv-event/partoptn"
 	"vh-srv-event/partstatus"
@@ -36,6 +37,7 @@ type Controllers struct {
 	ParticipationStatus partstatus.ParticipationStatus
 	Notification        notification.Notification
 	Analytics           analytics.Analytics
+	OperationTrace      operationtrace.OperationTrace
 }
 
 type Router struct {
@@ -53,6 +55,7 @@ type Router struct {
 	participationStatus partstatus.ParticipationStatus
 	eventEmail          notification.Notification
 	analytics           analytics.Analytics
+	operationTrace      operationtrace.OperationTrace
 }
 
 func NewRouter(server *gin.Engine, controller Controllers) *Router {
@@ -71,6 +74,7 @@ func NewRouter(server *gin.Engine, controller Controllers) *Router {
 		controller.ParticipationStatus,
 		controller.Notification,
 		controller.Analytics,
+		controller.OperationTrace,
 	}
 }
 func (r *Router) Init() {
@@ -180,6 +184,12 @@ func (r *Router) Init() {
 	}
 	basePath.GET("/participation-statuses", r.participationStatus.GetAllParticipationStatus)
 
+	operation := basePath.Group("/operation")
+	{
+		operation.POST("/", r.operationTrace.HandleOperationCreate)
+		operation.POST("/revert", r.operationTrace.HandleOperationRevert)
+	}
+
 	//Notification Email
 	emailNotification := basePath.Group("/notification")
 	{
@@ -230,6 +240,7 @@ func main() {
 	participationStatus := partstatus.NewParticipationStatus(conn)
 	notification := notification.NewNotification(conn)
 	analytics := analytics.NewAnalytics(conn)
+	operationtrace := operationtrace.NewOperationTrace(conn)
 
 	r := NewRouter(route, Controllers{
 		Participant:         participant,
@@ -245,6 +256,7 @@ func main() {
 		ParticipationStatus: participationStatus,
 		Notification:        notification,
 		Analytics:           analytics,
+		OperationTrace:      operationtrace,
 	})
 
 	r.Init()
