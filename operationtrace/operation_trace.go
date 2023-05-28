@@ -22,7 +22,7 @@ type operationReq struct {
 	NewKeycloakID *string `json:"new_keycloak_id" form:"new_keycloak_id"`
 	OldKeycloakID *string `json:"old_keycloak_id" form:"old_keycloak_id"`
 	Input         *string `json:"input"`
-	Type          *string `json:"type"`
+	Type          *string `json:"type" form:"type"`
 	Output        *string `json:"output"`
 	Status        *string `json:"status"`
 	Revert        *string `json:"revert"`
@@ -77,7 +77,7 @@ func (r *OperationTraceDB) HandleOperationCreate(c *gin.Context) {
 
 	var opr operationReq
 
-	if err := c.ShouldBindJSON(&opr); err != nil {
+	if err := c.Bind(&opr); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -151,7 +151,7 @@ func performOperation(r *OperationTraceDB, ctx *gin.Context, req operationReq) (
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	query := `UPDATE users SET keycloak_id = '` + *newKcId + `', email = '` + *newEmail + `' WHERE keycloak_id = '` + *oldKcId + `';`
+	query := `UPDATE participant SET keycloak_id = '` + *newKcId + `', email = '` + *newEmail + `' WHERE keycloak_id = '` + *oldKcId + `';`
 
 	updatedRes, err := tx.Exec(ctx, query)
 
@@ -167,7 +167,7 @@ func performOperation(r *OperationTraceDB, ctx *gin.Context, req operationReq) (
 	input.OldKeycloakID = oldKcId
 	input.OldEmail = req.OldEmail
 
-	revertQuery := `UPDATE users SET keycloak_id = '` + *oldKcId + `', email = '` + *oldEmail + `' WHERE keycloak_id = '` + *newKcId + `';`
+	revertQuery := `UPDATE participant SET keycloak_id = '` + *oldKcId + `', email = '` + *oldEmail + `' WHERE keycloak_id = '` + *newKcId + `';`
 
 	revert.Queries = append(revert.Queries, revertQuery)
 
