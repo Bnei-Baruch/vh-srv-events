@@ -83,23 +83,12 @@ func (r *OperationTraceDB) HandleOperationCreate(c *gin.Context) {
 	}
 
 	if opr.Type == nil || *opr.Type != "email_update" ||
-		opr.NewEmail == nil || opr.NewKeycloakID == nil || opr.OldKeycloakID == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid type"})
-		return
-	}
-
-	if opr.NewKeycloakID == nil || opr.OldKeycloakID == nil {
-		if opr.NewKeycloakID == nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "new keycloak id missing"})
+		opr.NewEmail == nil || opr.NewKeycloakID == nil {
+		if opr.Type == nil || *opr.Type != "email_update" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "type should be email_update"})
 		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "old keycloak id missing"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "new email or new keycloak id missing"})
 		}
-	}
-
-	// check if both keycloak ids are same
-
-	if *opr.NewKeycloakID == *opr.OldKeycloakID {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "both keycloak ids are same"})
 		return
 	}
 
@@ -145,13 +134,22 @@ func performOperation(r *OperationTraceDB, ctx *gin.Context, req operationReq) (
 	var input emailInput
 	var revert QueryLog
 
+	var query string
+	var revertQuery string
+
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	query := `UPDATE participant SET keycloak_id = '` + *newKcId + `', email = '` + *newEmail + `' WHERE keycloak_id = '` + *oldKcId + `';`
+	if oldKcId == nil {
+		query = `UPDATE participant SET email = '` + *newEmail + `' WHERE email = '` + *oldEmail + ` AND keycloak_id = '` + *newKcId + `';`
+		revertQuery = `UPDATE participant SET email = '` + *oldEmail + `' WHERE email = '` + *newEmail + ` AND keycloak_id = '` + *newKcId + `';`
+	} else {
+		query = `UPDATE participant SET keycloak_id = '` + *newKcId + `', email = '` + *newEmail + `' WHERE keycloak_id = '` + *oldKcId + `';`
+		revertQuery = `UPDATE participant SET keycloak_id = '` + *oldKcId + `', email = '` + *oldEmail + `' WHERE keycloak_id = '` + *newKcId + `';`
+	}
 
 	updatedRes, err := tx.Exec(ctx, query)
 
@@ -166,8 +164,6 @@ func performOperation(r *OperationTraceDB, ctx *gin.Context, req operationReq) (
 	input.NewKeycloakID = newKcId
 	input.OldKeycloakID = oldKcId
 	input.OldEmail = req.OldEmail
-
-	revertQuery := `UPDATE participant SET keycloak_id = '` + *oldKcId + `', email = '` + *oldEmail + `' WHERE keycloak_id = '` + *newKcId + `';`
 
 	revert.Queries = append(revert.Queries, revertQuery)
 
