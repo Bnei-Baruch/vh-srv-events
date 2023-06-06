@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -216,6 +217,13 @@ func main() {
 		os.Exit(1)
 	}
 	defer conn.Close()
+
+	migErr := util.SyncDBStructInsertionAndMigrations(databaseURL)
+	if migErr != nil {
+		log.Fatalf("Unable to migrate profile db: %s \n***\n %s \n ***", migErr, databaseURL)
+	}
+
+	fmt.Println("Migrated profile db")
 
 	participant := part.NewParticipant(conn)
 	participationOption := partoptn.NewParticipationOption(conn)

@@ -7,11 +7,15 @@ import (
 	part "vh-srv-event/participant"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-migrate/migrate/v4"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
+
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 type config struct {
@@ -117,4 +121,28 @@ func GetEnv() (config, error) {
 		return Config, err
 	}
 	return Config, nil
+}
+
+func SyncDBStructInsertionAndMigrations(dbUrl string) error {
+	fmt.Println("Syncing starting DB Struct Insertion and Migrations")
+
+	m, err := migrate.New(
+		"file://./db/migrations", dbUrl+"?sslmode=disable")
+	if err != nil {
+		fmt.Println("Error while creating migrate instance :: ", err)
+		return err
+	}
+
+	// Syncing Table struct (UP Mig), Insertion ( Up Mig ) & UP Migrations
+	if err := m.Up(); err != nil {
+		m.Close()
+		if err == migrate.ErrNoChange {
+			fmt.Println("No changes in UP migration")
+			return nil
+		}
+		return err
+	}
+	m.Close()
+	fmt.Println("UP Migration Done!")
+	return nil
 }
