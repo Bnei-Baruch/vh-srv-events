@@ -1,4 +1,4 @@
-FROM golang:1.16-stretch AS base
+FROM golang:1.20 AS base
 
 RUN apt-get update && apt-get upgrade -y
 
