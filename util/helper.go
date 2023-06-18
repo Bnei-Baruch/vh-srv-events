@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -21,7 +22,7 @@ import (
 type config struct {
 	DBUser         string `envconfig:"DB_USER" default:"postgres"`
 	DBPass         string `envconfig:"DB_PASSWORD" default:"password"`
-	DBName         string `envconfig:"DB_DATABASE" default:"event"`
+	DBName         string `envconfig:"DB_DATABASE" default:"events"`
 	DBHost         string `envconfig:"DB_HOST" default:"localhost"`
 	DBPort         string `envconfig:"DB_PORT" default:"5432"`
 	APP_PORT       string `envconfig:"APP_PORT" default:"8080"`
@@ -144,5 +145,38 @@ func SyncDBStructInsertionAndMigrations(dbUrl string) error {
 	}
 	m.Close()
 	fmt.Println("UP Migration Done!")
+
+	return nil
+}
+
+func CreateDatabaseIfNotExists(ctx context.Context, connString, dbName string) error {
+	config, err := pgx.ParseConfig(connString + "postgres")
+	if err != nil {
+		return err
+	}
+
+	// Connect to the default database
+	conn, err := pgx.ConnectConfig(ctx, config)
+	if err != nil {
+		return err
+	}
+	defer conn.Close(ctx)
+
+	// Check if the database already exists
+	var exists bool
+	err = conn.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = $1)", dbName).Scan(&exists)
+	if err != nil {
+		return err
+	}
+
+	// If the database does not exist, create it
+	if !exists {
+		_, err = conn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s", dbName))
+		if err != nil {
+			return err
+		}
+		fmt.Println("Database created :: " + dbName)
+	}
+
 	return nil
 }
