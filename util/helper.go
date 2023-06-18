@@ -3,7 +3,6 @@ package util
 import (
 	"context"
 	"fmt"
-	"log"
 
 	part "vh-srv-event/participant"
 
@@ -20,13 +19,13 @@ import (
 )
 
 type config struct {
-	DBUser         string `envconfig:"DB_USER" default:"postgres"`
-	DBPass         string `envconfig:"DB_PASSWORD" default:"password"`
-	DBName         string `envconfig:"DB_DATABASE" default:"events"`
-	DBHost         string `envconfig:"DB_HOST" default:"localhost"`
-	DBPort         string `envconfig:"DB_PORT" default:"5432"`
-	APP_PORT       string `envconfig:"APP_PORT" default:"8080"`
-	SendGridApiKey string `envconfig:"SEND_GRID_KEY" default:"SENDGRID_KEY_REDACTED"`
+	DBUser         string `envconfig:"DB_USER"`
+	DBPass         string `envconfig:"DB_PASSWORD"`
+	DBName         string `envconfig:"DB_DATABASE"`
+	DBHost         string `envconfig:"DB_HOST"`
+	DBPort         string `envconfig:"DB_PORT"`
+	APP_PORT       string `envconfig:"APP_PORT"`
+	SendGridApiKey string `envconfig:"SEND_GRID_KEY"`
 }
 
 func SendConfirmationEmail(ctx *gin.Context, r *pgxpool.Pool, participationStatusID int) error {
@@ -118,8 +117,10 @@ func SendEmail(fromName *string, fromEmail *string, templateId string, email str
 func GetEnv() (config, error) {
 	var Config config
 	if err := envconfig.Process("LIST", &Config); err != nil {
-		log.Fatalln("Error while fetching env file")
 		return Config, err
+	}
+	if Config.DBUser == "" || Config.DBPass == "" || Config.DBName == "" || Config.DBHost == "" || Config.DBPort == "" || Config.APP_PORT == "" || Config.SendGridApiKey == "" {
+		return Config, fmt.Errorf("ENV variables not set")
 	}
 	return Config, nil
 }
