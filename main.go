@@ -201,7 +201,7 @@ func main() {
 	config, err := util.GetEnv()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Fatalf("Failed to get env: %s", err)
 		return
 	}
 
@@ -229,7 +229,7 @@ func main() {
 		log.Fatalf("Unable to migrate profile db: %s \n***\n %s \n ***", migErr, connURLWithoutDatabase+config.DBName)
 	}
 
-	fmt.Println("Migrated profile db")
+	fmt.Println("Migrated event db")
 
 	participant := part.NewParticipant(conn)
 	participationOption := partoptn.NewParticipationOption(conn)
