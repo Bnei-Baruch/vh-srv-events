@@ -212,8 +212,7 @@ func main() {
 
 	err = util.CreateDatabaseIfNotExists(ctx, connURLWithoutDatabase, config.DBName)
 	if err != nil {
-		fmt.Println("Failed to create database:", err)
-		return
+		log.Fatalf("Unable to create database: %s", err)
 	}
 
 	conn, err := pgxpool.Connect(ctx, connURLWithoutDatabase+config.DBName)

@@ -129,7 +129,7 @@ func SyncDBStructInsertionAndMigrations(dbUrl string) error {
 	fmt.Println("Syncing starting DB Struct Insertion and Migrations")
 
 	m, err := migrate.New(
-		"file://./db/migrations", dbUrl+"?sslmode=disable")
+		"file://./migrations", dbUrl+"?sslmode=disable")
 	if err != nil {
 		fmt.Println("Error while creating migrate instance :: ", err)
 		return err
