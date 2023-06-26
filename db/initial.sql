@@ -1,6 +1,6 @@
 BEGIN;
 
-CREATE TABLE IF NOT EXISTS language_list
+CREATE TABLE language_list
 (
     code text PRIMARY KEY,
     name text
@@ -188,8 +188,7 @@ VALUES ('ab', 'Abkhaz'),
        ('xh', 'Xhosa'),
        ('yi', 'Yiddish'),
        ('yo', 'Yoruba'),
-       ('za', 'Zhuang, Chuang')
-ON CONFLICT (code) DO NOTHING;
+       ('za', 'Zhuang, Chuang');
 
 CREATE TABLE IF NOT EXISTS country_list (
     name TEXT NOT NULL,
@@ -437,8 +436,7 @@ INSERT INTO country_list VALUES
     ('Venezuela, Bolivarian Republic of','VE'),
     ('Viet Nam','VN'),
     ('Virgin Islands, British','VG'),
-    ('Virgin Islands, U.S.','VI')
-ON CONFLICT (code) DO NOTHING;
+    ('Virgin Islands, U.S.','VI');
 
 CREATE TABLE IF NOT EXISTS participation_option (
     name        TEXT NOT NULL UNIQUE,
