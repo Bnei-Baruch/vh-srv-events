@@ -1,6 +1,6 @@
 FROM golang:1.20 AS base
 
-RUN apt-get update && apt-get upgrade -y
+# RUN apt-get update && apt-get upgrade -y
 
 RUN mkdir /app
 
