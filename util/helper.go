@@ -1,8 +1,8 @@
 package util
 
 import (
-	"context"
 	"fmt"
+	"log"
 
 	part "vh-srv-event/participant"
 
@@ -19,13 +19,13 @@ import (
 )
 
 type config struct {
-	DBUser         string `envconfig:"DB_USER"`
-	DBPass         string `envconfig:"DB_PASSWORD"`
-	DBName         string `envconfig:"DB_DATABASE"`
-	DBHost         string `envconfig:"DB_HOST"`
-	DBPort         string `envconfig:"DB_PORT"`
-	APP_PORT       string `envconfig:"APP_PORT"`
-	SendGridApiKey string `envconfig:"SEND_GRID_KEY"`
+	DBUser         string `envconfig:"DB_USER" default:"postgres"`
+	DBPass         string `envconfig:"DB_PASSWORD" default:"password"`
+	DBName         string `envconfig:"DB_DATABASE" default:"event"`
+	DBHost         string `envconfig:"DB_HOST" default:"localhost"`
+	DBPort         string `envconfig:"DB_PORT" default:"5432"`
+	APP_PORT       string `envconfig:"APP_PORT" default:"8080"`
+	SendGridApiKey string `envconfig:"SEND_GRID_KEY" default:"SENDGRID_KEY_REDACTED"`
 }
 
 func SendConfirmationEmail(ctx *gin.Context, r *pgxpool.Pool, participationStatusID int) error {
@@ -117,10 +117,8 @@ func SendEmail(fromName *string, fromEmail *string, templateId string, email str
 func GetEnv() (config, error) {
 	var Config config
 	if err := envconfig.Process("LIST", &Config); err != nil {
+		log.Fatalln("Error while fetching env file")
 		return Config, err
-	}
-	if Config.DBUser == "" || Config.DBPass == "" || Config.DBName == "" || Config.DBHost == "" || Config.DBPort == "" || Config.APP_PORT == "" || Config.SendGridApiKey == "" {
-		return Config, fmt.Errorf("ENV variables not set")
 	}
 	return Config, nil
 }
@@ -129,7 +127,7 @@ func SyncDBStructInsertionAndMigrations(dbUrl string) error {
 	fmt.Println("Syncing starting DB Struct Insertion and Migrations")
 
 	m, err := migrate.New(
-		"file://./migrations", dbUrl+"?sslmode=disable")
+		"file://./db/migrations", dbUrl+"?sslmode=disable")
 	if err != nil {
 		fmt.Println("Error while creating migrate instance :: ", err)
 		return err
@@ -146,38 +144,5 @@ func SyncDBStructInsertionAndMigrations(dbUrl string) error {
 	}
 	m.Close()
 	fmt.Println("UP Migration Done!")
-
-	return nil
-}
-
-func CreateDatabaseIfNotExists(ctx context.Context, connString, dbName string) error {
-	config, err := pgx.ParseConfig(connString + "postgres")
-	if err != nil {
-		return err
-	}
-
-	// Connect to the default database
-	conn, err := pgx.ConnectConfig(ctx, config)
-	if err != nil {
-		return err
-	}
-	defer conn.Close(ctx)
-
-	// Check if the database already exists
-	var exists bool
-	err = conn.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = $1)", dbName).Scan(&exists)
-	if err != nil {
-		return err
-	}
-
-	// If the database does not exist, create it
-	if !exists {
-		_, err = conn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s", dbName))
-		if err != nil {
-			return err
-		}
-		fmt.Println("Database created :: " + dbName)
-	}
-
 	return nil
 }
