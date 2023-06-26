@@ -211,29 +211,34 @@ func main() {
 	config, err := util.GetEnv()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Fatalf("Failed to get env: %s", err)
 		return
 	}
 
-	databaseURL := "postgres://" + config.DBUser + ":" + config.DBPass + "@" + config.DBHost + ":" + config.DBPort + "/" + config.DBName
+	connURLWithoutDatabase := "postgres://" + config.DBUser + ":" + config.DBPass + "@" + config.DBHost + ":" + config.DBPort + "/"
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	conn, err := pgxpool.Connect(ctx, databaseURL)
+	err = util.CreateDatabaseIfNotExists(ctx, connURLWithoutDatabase, config.DBName)
+	if err != nil {
+		log.Fatalf("Unable to create database: %s", err)
+	}
+
+	conn, err := pgxpool.Connect(ctx, connURLWithoutDatabase+config.DBName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		fmt.Fprintf(os.Stderr, "Connection url: %s", databaseURL)
+		fmt.Fprintf(os.Stderr, "Connection url: %s", connURLWithoutDatabase+config.DBName)
 		os.Exit(1)
 	}
 	defer conn.Close()
 
-	migErr := util.SyncDBStructInsertionAndMigrations(databaseURL)
+	migErr := util.SyncDBStructInsertionAndMigrations(connURLWithoutDatabase + config.DBName)
 	if migErr != nil {
-		log.Fatalf("Unable to migrate profile db: %s \n***\n %s \n ***", migErr, databaseURL)
+		log.Fatalf("Unable to migrate profile db: %s \n***\n %s \n ***", migErr, connURLWithoutDatabase+config.DBName)
 	}
 
-	fmt.Println("Migrated profile db")
+	fmt.Println("Migrated event db")
 
 	participant := part.NewParticipant(conn)
 	participationOption := partoptn.NewParticipationOption(conn)
