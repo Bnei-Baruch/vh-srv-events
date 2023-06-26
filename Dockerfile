@@ -13,7 +13,6 @@ RUN CGO_ENABLED=0 go build -o events .
 FROM alpine:latest
 
 COPY --from=base /app/events /
-COPY /migrations /migrations
 
 #COPY ./.env /
 
