@@ -3,6 +3,7 @@ services:
   eventsdb:
     image: postgres:9.6
     container_name: eventsdb
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_DB: ${DB_DATABASE}
@@ -10,7 +11,9 @@ services:
     volumes:
       - /opt/srv-events-db:/docker-entrypoint-initdb.d
   vh-srv-events:
+    image: "${IMAGE_NAME}"
     container_name: 'vh-srv-events'
+    restart: unless-stopped
     environment: 
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -21,7 +24,6 @@ services:
       DB_APPNAME: "bbdev"
       APP_PORT: "${APP_PORT}"
       APP_MODE: "${APP_MODE}"
-    image: "${IMAGE_NAME}"
     cpus: '0.5'
     mem_limit: 250M
     ports:
