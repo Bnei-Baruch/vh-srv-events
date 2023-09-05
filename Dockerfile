@@ -1,4 +1,4 @@
-FROM golang:1.20 AS base
+FROM docker.io/golang:1.20.7-bullseye AS base
 
 # RUN apt-get update && apt-get upgrade -y
 
