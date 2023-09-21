@@ -16,3 +16,7 @@
 
 # VS Code
 .vscode
+.idea/
+
+.env
+/db/tmp.sql
