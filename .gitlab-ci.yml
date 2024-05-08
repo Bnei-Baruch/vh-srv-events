@@ -38,7 +38,7 @@ deploy_staging:
   script:
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
     - "[ ! -d /opt/srv-events-db ] && mkdir /opt/srv-events-db"
-    - docker compose up -d --remove-orphans eventsdb
+    - IMAGE_NAME=$STAGING_IMAGE docker compose up -d --remove-orphans eventsdb
     - sleep 10
     - IMAGE_NAME=$STAGING_IMAGE docker compose up -d --remove-orphans
   only:
