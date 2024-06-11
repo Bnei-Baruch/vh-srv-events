@@ -1,19 +1,21 @@
-FROM docker.io/golang:1.20.7-bullseye AS base
+FROM golang:1.21 AS base
 
-# RUN apt-get update && apt-get upgrade -y
-
-RUN mkdir /app
-
-ADD . /app
+# ARG here is to make the sha available for use in -ldflags
+ARG GIT_SHA
 
 WORKDIR /app
 
-RUN CGO_ENABLED=0 go build -o events .
+# pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
+COPY . .
+RUN CGO_ENABLED=0 go build -ldflags "-X gitlab.bbdev.team/vh/vh-srv-events/common.GitSHA=${GIT_SHA}" -o events .
 
 FROM alpine:latest
 
+COPY db /db
 COPY --from=base /app/events /
-COPY --from=base /app/db/migrations /db/migrations
 
 EXPOSE 8080
 

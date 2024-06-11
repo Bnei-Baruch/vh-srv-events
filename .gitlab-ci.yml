@@ -23,14 +23,15 @@ build_staging:
   
 deploy_staging:
   variables: 
+    APP_PORT: "8080"
+    APP_MODE: "release"
+    APP_ENV: "staging"
     DB_HOST: "eventsdb"
     DB_PORT: 5432
     DB_USER: "eventsuser"
     DB_DATABASE: "event_database"
     DB_PASSWORD: "mypassword"
-    DATABASE_URL: "postgres://postgres:password@eventsdb:5432/event"
-    APP_PORT: "8080"
-    APP_MODE: "dev"
+    SENTRY_DSN: ${STAGING_EVENTS_SENTRY_DSN}
   image: gitlab.bbdev.team:5050/vh/buildutils/buildutil:0.8.0
   stage: deploy
   tags:
@@ -62,14 +63,15 @@ deploy_production:
   tags:
     - production
   variables: 
+    APP_PORT: "8080"
+    APP_MODE: "release"
+    APP_ENV: "production"
     DB_HOST: "${PROD_PG_HOST}" 
     DB_PORT: ${PROD_PG_PORT} 
     DB_USER: ${PROD_EVENTS_DB_USER}
     DB_DATABASE: ${PROD_EVENTS_DB_NAME}
     DB_PASSWORD: "${PROD_EVENTS_DB_PASS}"
-    APP_PORT: "8080"
-    APP_MODE: "prod"
-    DATABASE_URL: "postgres://${PROD_EVENTS_DB_USER}:${PROD_EVENTS_DB_PASS}@${PROD_PG_HOST}:${PROD_PG_PORT}/${PROD_EVENTS_DB_NAME}"
+    SENTRY_DSN: ${PROD_EVENTS_SENTRY_DSN}
   script:
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
     - IMAGE_NAME=$PROD_IMAGE docker compose up -d vh-srv-events
