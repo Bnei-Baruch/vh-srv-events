@@ -15,15 +15,15 @@ services:
     container_name: 'vh-srv-events'
     restart: unless-stopped
     environment: 
+      APP_PORT: "${APP_PORT}"
+      APP_MODE: "${APP_MODE}"
+      APP_ENV: ${APP_ENV}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_HOST: "${DB_HOST}"
-      PGPORT: ${DB_PORT}
       DB_PORT: "${DB_PORT}"
       DB_DATABASE: ${DB_DATABASE}
-      DB_APPNAME: "bbdev"
-      APP_PORT: "${APP_PORT}"
-      APP_MODE: "${APP_MODE}"
+      SENTRY_DSN: ${SENTRY_DSN}
     cpus: '0.5'
     mem_limit: 250M
     ports:
