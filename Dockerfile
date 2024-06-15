@@ -19,4 +19,4 @@ COPY --from=base /app/events /
 
 EXPOSE 8080
 
-CMD ["./events"]
+CMD ["./events", "server"]
