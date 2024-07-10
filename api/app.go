@@ -9,6 +9,8 @@ import (
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/hellofresh/health-go/v5"
+	healthpgx "github.com/hellofresh/health-go/v5/checks/pgx4"
 
 	"gitlab.bbdev.team/vh/vh-srv-events/api/middleware"
 	"gitlab.bbdev.team/vh/vh-srv-events/common"
@@ -31,6 +33,7 @@ func (a *App) Initialize() {
 	a.initDB()
 	a.eventsAPI = NewEventsAPI(a.repo)
 	a.initGinEngine()
+	a.initHealth()
 }
 
 func (a *App) initDB() {
@@ -198,6 +201,23 @@ func (a *App) initGinEngine() {
 	{
 		analytics.GET("/participants", a.eventsAPI.PartAnalytics)
 	}
+}
+
+func (a *App) initHealth() {
+	h, _ := health.New(health.WithComponent(health.Component{
+		Name:    common.ServiceName,
+		Version: common.GitSHA,
+	}), health.WithChecks(
+		health.Config{
+			Name:    "postgres",
+			Timeout: time.Second * 5,
+			Check:   healthpgx.New(healthpgx.Config{DSN: repo.GetDBURL()}),
+		},
+	))
+
+	a.gEngine.GET("/health", func(c *gin.Context) {
+		h.HandlerFunc(c.Writer, c.Request)
+	})
 }
 
 func (a *App) Run() {
