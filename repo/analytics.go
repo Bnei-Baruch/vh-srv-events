@@ -10,10 +10,10 @@ type PartOptionAndCount struct {
 	Count               *int    `json:"count"`
 }
 
-func (e *EventsDB) FetchTotalParticipantByOptionAndGroupBy(ctx context.Context, eventID string) ([]PartOptionAndCount, error) {
+func (e *EventsDB) FetchTotalParticipantByOptionAndGroupBy(ctx context.Context, eventID uint) ([]PartOptionAndCount, error) {
 	var eventIDQuery string
-	if eventID != "" {
-		eventIDQuery = ` WHERE event_id=` + eventID
+	if eventID != 0 {
+		eventIDQuery = fmt.Sprintf(" WHERE event_id=%d ", eventID)
 	}
 
 	rows, err := e.Query(ctx, `select participation_option, count (participation_option) as qt 
@@ -37,10 +37,10 @@ func (e *EventsDB) FetchTotalParticipantByOptionAndGroupBy(ctx context.Context, 
 	return partOptions, nil
 }
 
-func (e *EventsDB) FetchTotalParticipantByOption(ctx context.Context, eventID string) (int, error) {
+func (e *EventsDB) FetchTotalParticipantByOption(ctx context.Context, eventID uint) (int, error) {
 	var eventIDQuery string
-	if eventID != "" {
-		eventIDQuery = ` WHERE event_id=` + eventID
+	if eventID != 0 {
+		eventIDQuery = fmt.Sprintf(" WHERE event_id=%d ", eventID)
 	}
 
 	var count int

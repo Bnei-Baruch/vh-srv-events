@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -14,15 +15,18 @@ type PartAnalyticRes struct {
 }
 
 func (e *EventsAPI) PartAnalytics(c *gin.Context) {
-	eventId := c.Query("event_id")
+	eventId, err := strconv.Atoi(c.Query("event_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	}
 
-	partOptAndCount, partOptionsAndCountErr := e.repo.FetchTotalParticipantByOptionAndGroupBy(c.Request.Context(), eventId)
+	partOptAndCount, partOptionsAndCountErr := e.repo.FetchTotalParticipantByOptionAndGroupBy(c.Request.Context(), uint(eventId))
 	if partOptionsAndCountErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": partOptionsAndCountErr.Error(), "success": false})
 		return
 	}
 
-	totalPartOption, totalPartOptionErr := e.repo.FetchTotalParticipantByOption(c.Request.Context(), eventId)
+	totalPartOption, totalPartOptionErr := e.repo.FetchTotalParticipantByOption(c.Request.Context(), uint(eventId))
 	if totalPartOptionErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": totalPartOptionErr.Error(), "success": false})
 		return

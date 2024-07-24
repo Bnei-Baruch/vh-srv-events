@@ -81,8 +81,8 @@ type EventsRepository interface {
 		email string, gender string, partOption string, firstName string, lastName string) (int, error)
 	DeleteParticipationStatusByID(ctx context.Context, id string) error
 
-	FetchTotalParticipantByOptionAndGroupBy(ctx context.Context, eventID string) ([]PartOptionAndCount, error)
-	FetchTotalParticipantByOption(ctx context.Context, eventID string) (int, error)
+	FetchTotalParticipantByOptionAndGroupBy(ctx context.Context, eventID uint) ([]PartOptionAndCount, error)
+	FetchTotalParticipantByOption(ctx context.Context, eventID uint) (int, error)
 
 	FetchUsersAndSendEmail(ctx context.Context, s Notification) error
 
