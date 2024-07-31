@@ -2,7 +2,9 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v4"
 	"strings"
 	"time"
 
@@ -263,6 +265,19 @@ func (e *EventsDB) CreateNewParticipant(ctx context.Context, req Part) (int, err
 func (e *EventsDB) DeleteParticipantByID(ctx context.Context, id string) error {
 	_, err := e.Exec(ctx, "delete from participant where id=$1", id)
 	return err
+}
+
+func (e *EventsDB) IsSubjectID(ctx context.Context, keycloakID, accountID string) (bool, error) {
+	row := e.QueryRow(ctx, "SELECT 1 FROM participant WHERE keycloak_id = $1 AND id = $2", keycloakID, accountID)
+	var x int
+	if err := row.Scan(&x); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }
 
 func prepareParticipantUpdateQuery(req Part) (string, []interface{}) {

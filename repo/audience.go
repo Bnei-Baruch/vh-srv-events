@@ -47,6 +47,7 @@ func (e *EventsDB) GetAllAudience(ctx context.Context, skip int, limit int) ([]A
 }
 
 func (e *EventsDB) UpdateAudienceByName(ctx context.Context, req Audience, name string) error {
+
 	toUpdate, toUpdateArgs := prepareAudienceUpdateQuery(req)
 	if len(toUpdateArgs) == 0 {
 		return common.ErrInvalidValues

@@ -16,7 +16,6 @@ import (
 
 func (e *EventsAPI) GetEventByID(c *gin.Context) {
 	id := c.Param("id")
-
 	u, err := e.repo.GetEventByID(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -32,12 +31,31 @@ func (e *EventsAPI) GetEventByID(c *gin.Context) {
 }
 
 func (e *EventsAPI) GetAllEvent(c *gin.Context) {
+
 	skip := c.Query("skip")
 	limit := c.Query("limit")
 	email := c.Query("email")
 	keycloakID := c.Query("kc_id")
 	slug := c.Query("slug")
 
+	if email != "" {
+		if !e.isEmailOwnerOrHasAnyRole(c, email, common.RoleRoot, common.RoleAdmin) {
+			return
+		}
+	}
+	if keycloakID != "" {
+		if !e.isSubjectOrHasAnyRole(c, keycloakID, common.RoleRoot, common.RoleAdmin) {
+			return
+		}
+	} else {
+		if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+			var ok bool
+			keycloakID, ok = e.getUserKeyFromRequest(c)
+			if !ok {
+				return
+			}
+		}
+	}
 	if skip == "" {
 		skip = "0"
 	}
@@ -69,6 +87,9 @@ func (e *EventsAPI) GetAllEvent(c *gin.Context) {
 }
 
 func (e *EventsAPI) CreateNewEvent(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	s := repo.Event{}
 	if err := c.ShouldBindJSON(&s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -91,6 +112,9 @@ func (e *EventsAPI) CreateNewEvent(c *gin.Context) {
 }
 
 func (e *EventsAPI) UpdateEventByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	u := repo.Event{}
 	if err := c.ShouldBindJSON(&u); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -115,6 +139,9 @@ func (e *EventsAPI) UpdateEventByID(c *gin.Context) {
 }
 
 func (e *EventsAPI) DeleteEventByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	id := c.Param("id")
 
 	if err := e.repo.DeleteEventByID(c.Request.Context(), id); err != nil {
@@ -127,6 +154,9 @@ func (e *EventsAPI) DeleteEventByID(c *gin.Context) {
 }
 
 func (e *EventsAPI) DeleteHardEventByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	id := c.Param("id")
 
 	if err := e.repo.DeleteHardEventByID(c.Request.Context(), id); err != nil {

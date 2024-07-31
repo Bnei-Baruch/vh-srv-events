@@ -16,7 +16,6 @@ import (
 
 func (e *EventsAPI) GetItemByID(c *gin.Context) {
 	id := c.Param("id")
-
 	u, err := e.repo.GetItemByID(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -66,6 +65,9 @@ func (e *EventsAPI) GetAllItem(c *gin.Context) {
 }
 
 func (e *EventsAPI) CreateNewItem(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	s := repo.Item{}
 	if err := c.ShouldBindJSON(&s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -88,6 +90,9 @@ func (e *EventsAPI) CreateNewItem(c *gin.Context) {
 }
 
 func (e *EventsAPI) UpdateItemByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	u := repo.Item{}
 	if err := c.ShouldBindJSON(&u); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -111,6 +116,9 @@ func (e *EventsAPI) UpdateItemByID(c *gin.Context) {
 }
 
 func (e *EventsAPI) DeleteItemByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	id := c.Param("id")
 
 	if err := e.repo.DeleteItemByID(c.Request.Context(), id); err != nil {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"gitlab.bbdev.team/vh/vh-srv-events/common"
 	"gitlab.bbdev.team/vh/vh-srv-events/repo"
 )
 
@@ -14,8 +15,11 @@ type PartAnalyticRes struct {
 }
 
 func (e *EventsAPI) PartAnalytics(c *gin.Context) {
-	eventId := c.Query("event_id")
 
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
+	eventId := c.Query("event_id")
 	partOptAndCount, partOptionsAndCountErr := e.repo.FetchTotalParticipantByOptionAndGroupBy(c.Request.Context(), eventId)
 	if partOptionsAndCountErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": partOptionsAndCountErr.Error(), "success": false})

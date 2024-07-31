@@ -16,7 +16,6 @@ import (
 
 func (e *EventsAPI) GetBroadcastURLByID(c *gin.Context) {
 	id := c.Param("id")
-
 	u, err := e.repo.GetURLByID(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -65,6 +64,9 @@ func (e *EventsAPI) GetAllBroadcastURL(c *gin.Context) {
 }
 
 func (e *EventsAPI) CreateNewBroadcastURL(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	s := repo.BroadcastURL{}
 	if err := c.ShouldBindJSON(&s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -86,6 +88,9 @@ func (e *EventsAPI) CreateNewBroadcastURL(c *gin.Context) {
 }
 
 func (e *EventsAPI) UpdateBroadcastURLByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	u := repo.BroadcastURL{}
 	if err := c.ShouldBindJSON(&u); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -109,6 +114,9 @@ func (e *EventsAPI) UpdateBroadcastURLByID(c *gin.Context) {
 }
 
 func (e *EventsAPI) DeleteBroadcastURLByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	id := c.Param("id")
 	if err := e.repo.DeleteURLByID(c.Request.Context(), id); err != nil {
 		c.Status(http.StatusInternalServerError)
