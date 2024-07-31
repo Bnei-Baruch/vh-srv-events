@@ -64,6 +64,7 @@ type EventsRepository interface {
 	UpdateParticipantByID(ctx context.Context, req Part, id string) error
 	CreateNewParticipant(ctx context.Context, req Part) (int, error)
 	DeleteParticipantByID(ctx context.Context, id string) error
+	IsSubjectID(ctx context.Context, keycloakID, accountID string) (bool, error)
 
 	GetParticipantOptionByName(ctx context.Context, name string) (*ParticipantOptionResponse, error)
 	GetAllParticipantOption(ctx context.Context, skip int, limit int) ([]ParticipantOptionResponse, error)

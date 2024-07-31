@@ -66,6 +66,9 @@ func (e *EventsAPI) GetAllPlatform(c *gin.Context) {
 }
 
 func (e *EventsAPI) CreateNewPlatform(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	s := repo.Platform{}
 	if err := c.ShouldBindJSON(&s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -88,6 +91,9 @@ func (e *EventsAPI) CreateNewPlatform(c *gin.Context) {
 }
 
 func (e *EventsAPI) UpdatePlatformByName(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	u := repo.Platform{}
 	if err := c.ShouldBindJSON(&u); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -111,6 +117,9 @@ func (e *EventsAPI) UpdatePlatformByName(c *gin.Context) {
 }
 
 func (e *EventsAPI) DeletePlatformByName(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	name := c.Param("name")
 	if err := e.repo.DeletePlatformByName(c.Request.Context(), name); err != nil {
 		c.Status(http.StatusInternalServerError)

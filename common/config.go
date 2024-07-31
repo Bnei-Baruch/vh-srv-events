@@ -13,6 +13,11 @@ type envConfig struct {
 	DBHost string `envconfig:"DB_HOST" default:"localhost"`
 	DBPort string `envconfig:"DB_PORT" default:"5432"`
 
+	KeycloakServerUrl    string `envconfig:"KEYCLOAK_SERVER_URL"`
+	KeycloakRealm        string `envconfig:"KEYCLOAK_REALM"`
+	KeycloakClientID     string `envconfig:"KEYCLOAK_CLIENT_ID"`
+	KeycloakClientSecret string `envconfig:"KEYCLOAK_CLIENT_SECRET"`
+
 	SendGridApiKey string `envconfig:"SEND_GRID_KEY" default:"SENDGRID_KEY_REDACTED"`
 }
 

@@ -16,7 +16,6 @@ import (
 
 func (e *EventsAPI) GetEventPartOptionByID(c *gin.Context) {
 	id := c.Param("id")
-
 	u, err := e.repo.GetEventPartOptionByID(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -66,6 +65,9 @@ func (e *EventsAPI) GetAllEventPartOption(c *gin.Context) {
 }
 
 func (e *EventsAPI) CreateNewEventPartOption(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	s := repo.EventPartOption{}
 	if err := c.ShouldBindJSON(&s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -88,6 +90,9 @@ func (e *EventsAPI) CreateNewEventPartOption(c *gin.Context) {
 }
 
 func (e *EventsAPI) UpdateEventPartOptionByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	u := repo.EventPartOption{}
 	if err := c.ShouldBindJSON(&u); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -111,6 +116,9 @@ func (e *EventsAPI) UpdateEventPartOptionByID(c *gin.Context) {
 }
 
 func (e *EventsAPI) DeleteEventPartOptionByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	id := c.Param("id")
 
 	if err := e.repo.DeleteEventPartOptionByID(c.Request.Context(), id); err != nil {

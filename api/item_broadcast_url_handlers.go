@@ -16,7 +16,6 @@ import (
 
 func (e *EventsAPI) GetItemBroadcastURLByID(c *gin.Context) {
 	id := c.Param("id")
-
 	u, err := e.repo.GetItemBroadcastURLByID(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -66,6 +65,9 @@ func (e *EventsAPI) GetAllItemBroadcastURL(c *gin.Context) {
 }
 
 func (e *EventsAPI) CreateNewItemBroadcastURL(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	s := repo.ItemBroadcastURL{}
 	if err := c.ShouldBindJSON(&s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -88,6 +90,9 @@ func (e *EventsAPI) CreateNewItemBroadcastURL(c *gin.Context) {
 }
 
 func (e *EventsAPI) UpdateItemBroadcastURLByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	u := repo.ItemBroadcastURL{}
 	if err := c.ShouldBindJSON(&u); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -112,6 +117,9 @@ func (e *EventsAPI) UpdateItemBroadcastURLByID(c *gin.Context) {
 }
 
 func (e *EventsAPI) DeleteItemBroadcastURLByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	id := c.Param("id")
 
 	if err := e.repo.DeleteItemBroadcastURLByID(c.Request.Context(), id); err != nil {

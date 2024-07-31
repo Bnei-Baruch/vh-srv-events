@@ -71,6 +71,9 @@ func (e *EventsAPI) GetAllAudience(c *gin.Context) {
 }
 
 func (e *EventsAPI) CreateNewAudience(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	s := repo.Audience{}
 	if err := c.ShouldBindJSON(&s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -95,6 +98,9 @@ func (e *EventsAPI) CreateNewAudience(c *gin.Context) {
 }
 
 func (e *EventsAPI) UpdateAudienceByName(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	u := repo.Audience{}
 	if err := c.ShouldBindJSON(&u); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -118,6 +124,9 @@ func (e *EventsAPI) UpdateAudienceByName(c *gin.Context) {
 }
 
 func (e *EventsAPI) DeleteAudienceByName(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	name := c.Param("name")
 	if err := e.repo.DeleteAudienceByName(c.Request.Context(), name); err != nil {
 		c.Status(http.StatusInternalServerError)

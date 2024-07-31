@@ -16,7 +16,6 @@ import (
 
 func (e *EventsAPI) GetEventItemByID(c *gin.Context) {
 	id := c.Param("id")
-
 	u, err := e.repo.GetEventItemByID(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -66,6 +65,9 @@ func (e *EventsAPI) GetAllEventItem(c *gin.Context) {
 }
 
 func (e *EventsAPI) CreateNewEventItem(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	s := repo.EventItem{}
 	if err := c.ShouldBindJSON(&s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -88,6 +90,9 @@ func (e *EventsAPI) CreateNewEventItem(c *gin.Context) {
 }
 
 func (e *EventsAPI) UpdateEventItemByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	u := repo.EventItem{}
 	if err := c.ShouldBindJSON(&u); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -111,6 +116,9 @@ func (e *EventsAPI) UpdateEventItemByID(c *gin.Context) {
 }
 
 func (e *EventsAPI) DeleteEventItemByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	id := c.Param("id")
 
 	if err := e.repo.DeleteEventItemByID(c.Request.Context(), id); err != nil {

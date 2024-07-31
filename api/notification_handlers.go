@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"gitlab.bbdev.team/vh/vh-srv-events/common"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +12,9 @@ import (
 )
 
 func (e *EventsAPI) SendEventEmail(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	s := repo.Notification{}
 	if err := c.ShouldBindJSON(&s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})

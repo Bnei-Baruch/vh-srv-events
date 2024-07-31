@@ -16,7 +16,9 @@ import (
 
 func (e *EventsAPI) GetParticipantById(c *gin.Context) {
 	id := c.Param("id")
-
+	if !e.isUserOrHasAnyRole(c, id, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	u, err := e.repo.GetParticipantById(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -33,7 +35,9 @@ func (e *EventsAPI) GetParticipantById(c *gin.Context) {
 
 func (e *EventsAPI) GetParticipantByKeycloakID(c *gin.Context) {
 	id := c.Param("id")
-
+	if !e.isSubjectOrHasAnyRole(c, id, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	u, err := e.repo.GetParticipantByKeycloakID(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -50,7 +54,9 @@ func (e *EventsAPI) GetParticipantByKeycloakID(c *gin.Context) {
 
 func (e *EventsAPI) GetParticipantByEmail(c *gin.Context) {
 	email := c.Param("email")
-
+	if !e.isEmailOwnerOrHasAnyRole(c, email, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	u, err := e.repo.GetParticipantByEmail(c.Request.Context(), email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -66,6 +72,9 @@ func (e *EventsAPI) GetParticipantByEmail(c *gin.Context) {
 }
 
 func (e *EventsAPI) GetAllParticipant(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	skip := c.Query("skip")
 	limit := c.Query("limit")
 	eventId := c.Query("event_id")
@@ -127,7 +136,9 @@ func (e *EventsAPI) CreateNewParticipant(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
 		return
 	}
-
+	if !e.isEmailOwnerOrHasAnyRole(c, *s.Email, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	id, err := e.repo.CreateNewParticipant(c.Request.Context(), s)
 	if err != nil {
 		if errors.Is(err, common.ErrInvalidValues) {
@@ -155,7 +166,9 @@ func (e *EventsAPI) UpdateParticipantByID(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-
+	if !e.isUserOrHasAnyRole(c, id, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	if err := e.repo.UpdateParticipantByID(c.Request.Context(), u, id); err != nil {
 		if errors.Is(err, common.ErrNoRowsAffected) {
 			c.Status(http.StatusNotFound)
@@ -172,6 +185,9 @@ func (e *EventsAPI) UpdateParticipantByID(c *gin.Context) {
 }
 
 func (e *EventsAPI) DeleteParticipantByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	id := c.Param("id")
 
 	if err := e.repo.DeleteParticipantByID(c.Request.Context(), id); err != nil {

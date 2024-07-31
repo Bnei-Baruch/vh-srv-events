@@ -21,7 +21,9 @@ import (
 
 func (e *EventsAPI) GetParticipationStatusByID(c *gin.Context) {
 	id := c.Param("id")
-
+	if !e.isUserOrHasAnyRole(c, id, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	u, err := e.repo.GetParticipationStatusByID(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -37,6 +39,9 @@ func (e *EventsAPI) GetParticipationStatusByID(c *gin.Context) {
 }
 
 func (e *EventsAPI) GetAllParticipationStatus(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	skip := c.Query("skip")
 	limit := c.Query("limit")
 	eventID := c.Query("eventid")
@@ -101,6 +106,7 @@ func (e *EventsAPI) GetAllParticipationStatus(c *gin.Context) {
 }
 
 func (e *EventsAPI) CreateNewParticipationStatus(c *gin.Context) {
+
 	s := repo.PartStatusWithNotification{}
 	if err := c.ShouldBindJSON(&s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -112,7 +118,9 @@ func (e *EventsAPI) CreateNewParticipationStatus(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
 		return
 	}
-
+	if !e.isUserOrHasAnyRole(c, strconv.Itoa(*s.ParticipantID), common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	ctx := c.Request.Context()
 	id, err := e.repo.CreateNewParticipationStatus(ctx, s)
 	if err != nil {
@@ -147,6 +155,7 @@ func (e *EventsAPI) CreateNewParticipationStatus(c *gin.Context) {
 }
 
 func (e *EventsAPI) UpdateParticipationStatus(c *gin.Context) {
+
 	u := repo.PartStatusWithNotification{}
 	if err := c.ShouldBindJSON(&u); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "success": false})
@@ -161,7 +170,9 @@ func (e *EventsAPI) UpdateParticipationStatus(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required parameters", "success": false})
 		return
 	}
-
+	if !e.isSubjectOrHasAnyRole(c, kcID, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	var err error
 	ctx := c.Request.Context()
 	if id != "" {
@@ -207,6 +218,9 @@ func (e *EventsAPI) UpdateParticipationStatus(c *gin.Context) {
 }
 
 func (e *EventsAPI) DeleteParticipationStatusByID(c *gin.Context) {
+	if !e.HasAnyRole(c, common.RoleRoot, common.RoleAdmin) {
+		return
+	}
 	id := c.Param("id")
 
 	if err := e.repo.DeleteParticipationStatusByID(c.Request.Context(), id); err != nil {
