@@ -40,7 +40,7 @@ func (e *EventsAPI) GetAllPlatform(c *gin.Context) {
 	}
 
 	if limit == "" {
-		limit = "10"
+		limit = "100"
 	}
 
 	intSkip, err := strconv.Atoi(skip)

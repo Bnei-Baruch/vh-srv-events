@@ -64,7 +64,7 @@ func (e *EventsAPI) GetAllParticipationStatus(c *gin.Context) {
 	}
 
 	if limit == "" {
-		limit = "10"
+		limit = "100"
 	}
 
 	_, sErr := strconv.Atoi(skip)
