@@ -81,12 +81,21 @@ func (a *App) initGinEngine() {
 		middleware.Recovery(),
 		sentrygin.New(sentrygin.Options{Repanic: true}),
 		middleware.Sentry(),
+	)
+	if gin.IsDebugging() {
+		a.gEngine.Use(cors.New(cors.Config{
+			AllowAllOrigins:  true,
+			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+			ExposeHeaders:    []string{"Content-Length"},
+			AllowCredentials: true,
+			MaxAge:           12 * time.Hour,
+		}))
+	}
+	a.gEngine.Use(
 		middleware.TokenSource(),
 		middleware.Authentication(tokenVerifier),
 	)
-	if gin.IsDebugging() {
-		a.gEngine.Use(cors.Default())
-	}
 
 	// routes
 	basePath := a.gEngine.Group("/v1")
