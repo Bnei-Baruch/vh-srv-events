@@ -1,4 +1,5 @@
 stages:
+  - test
   - build
   - deploy
 
@@ -7,6 +8,50 @@ variables:
   STAGING_LATEST_IMAGE: $CI_REGISTRY_IMAGE:staging
   PROD_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
   PROD_LATEST_IMAGE: $CI_REGISTRY_IMAGE:latest
+
+test:
+  image: golang:1.21
+  stage: test
+  services:
+    - name: postgres:12
+      alias: postgres
+  variables:
+    # PostgreSQL service configuration
+    POSTGRES_DB: events_test
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    POSTGRES_HOST_AUTH_METHOD: trust
+    # Application test configuration
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    DB_USER: postgres
+    DB_PASSWORD: postgres
+    DB_DATABASE: events_test
+    DB_SSLMODE: disable
+    APP_ENV: test
+    APP_MODE: debug
+  before_script:
+    # Wait for PostgreSQL to be ready
+    - apt-get update && apt-get install -y postgresql-client
+    - until PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB -c '\q'; do
+        echo "PostgreSQL is unavailable - sleeping";
+        sleep 2;
+      done
+    - echo "PostgreSQL is up"
+  script:
+    - go mod download
+    - go test -v -race -coverprofile=coverage.out ./...
+    - go tool cover -func=coverage.out
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+  artifacts:
+    paths:
+      - coverage.out
+    expire_in: 1 week
+  only:
+    - master
+    - tags
+    - merge_requests
+
 build_staging:
   image: docker:latest
   stage: build

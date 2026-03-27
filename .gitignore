@@ -20,3 +20,8 @@
 
 .env
 /db/tmp.sql
+
+# Test coverage
+coverage.out
+coverage.html
+coverage.txt
