@@ -141,13 +141,15 @@ jobs:
             docker compose pull vh-srv-events
             docker compose up -d --remove-orphans
 
+            # Health check: /health requires auth, so 401 means service is up
             sleep 5
             for i in 1 2 3; do
-              if curl -sf http://localhost:7475/health > /dev/null; then
-                echo "Health check passed"
+              HTTP_CODE=$(curl -so /dev/null -w '%{http_code}' http://localhost:7475/health || true)
+              if [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "200" ]; then
+                echo "Health check passed (HTTP $HTTP_CODE)"
                 exit 0
               fi
-              echo "Health check attempt $i failed, retrying in 5s..."
+              echo "Health check attempt $i: HTTP $HTTP_CODE, retrying in 5s..."
               sleep 5
             done
             echo "WARNING: health check failed after 3 attempts"
