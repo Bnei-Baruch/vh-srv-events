@@ -56,6 +56,10 @@ func (r *OperationTraceDB) HandleOperationRevert(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": revertErr.Error()})
 		return
 	}
+	if errors.Is(revertErr, common.ErrOperationReverted) || errors.Is(revertErr, common.ErrOperationNoMatch) {
+		c.JSON(http.StatusConflict, gin.H{"error": revertErr.Error()})
+		return
+	}
 
 	if revertErr != nil {
 		_ = c.Error(fmt.Errorf("error while reverting operation: %w", revertErr))
@@ -87,6 +91,10 @@ func (r *OperationTraceDB) HandleOperationCreate(c *gin.Context) {
 
 	ID, dbErr := performOperation(r, c, opr)
 
+	if errors.Is(dbErr, common.ErrOperationNoMatch) {
+		c.JSON(http.StatusConflict, gin.H{"error": dbErr.Error()})
+		return
+	}
 	if dbErr != nil {
 		c.Status(http.StatusInternalServerError)
 		_ = c.Error(fmt.Errorf("error while creating grant: %w", dbErr))
@@ -166,6 +174,10 @@ func performOperation(r *OperationTraceDB, ctx *gin.Context, req operationReq) (
 		if err != nil {
 			return 0, fmt.Errorf("problem updating users: %w", err)
 		}
+		// Exactly one participant must start from this email and key, or nothing changes.
+		if updatedRes.RowsAffected() != 1 {
+			return 0, common.ErrOperationNoMatch
+		}
 		output.Queries = append(output.Queries, query)
 		output.Logs = append(output.Logs, updatedRes.String())
 	}
@@ -205,7 +217,7 @@ func revertOperation(r *OperationTraceDB, ctx *gin.Context, newEmail string, old
 	}
 
 	if status == "reverted" {
-		return fmt.Errorf("operation already reverted")
+		return common.ErrOperationReverted
 	}
 
 	// The statements come from the code, built from the stored input.
@@ -214,6 +226,9 @@ func revertOperation(r *OperationTraceDB, ctx *gin.Context, newEmail string, old
 		revertRes, err := tx.Exec(ctx, query.SQL, query.args()...)
 		if err != nil {
 			return fmt.Errorf("problem reverting operation: %w", err)
+		}
+		if revertRes.RowsAffected() != 1 {
+			return common.ErrOperationNoMatch
 		}
 		revert.Logs = append(revert.Logs, revertRes.String())
 	}
