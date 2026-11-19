@@ -11,4 +11,7 @@ var (
 	// ErrOperationNoMatch: no participant has the email and keycloak id the
 	// rename (or its revert) starts from, so nothing was changed.
 	ErrOperationNoMatch = fmt.Errorf("no participant matches this email and keycloak id")
+	// ErrOperationConflict: the keycloak id or email the rename (or its
+	// revert) moves to already belongs to another participant.
+	ErrOperationConflict = fmt.Errorf("keycloak id or email already belongs to another participant")
 )

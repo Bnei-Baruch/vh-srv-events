@@ -56,7 +56,8 @@ func (r *OperationTraceDB) HandleOperationRevert(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": revertErr.Error()})
 		return
 	}
-	if errors.Is(revertErr, common.ErrOperationReverted) || errors.Is(revertErr, common.ErrOperationNoMatch) {
+	if errors.Is(revertErr, common.ErrOperationReverted) || errors.Is(revertErr, common.ErrOperationNoMatch) ||
+		errors.Is(revertErr, common.ErrOperationConflict) {
 		c.JSON(http.StatusConflict, gin.H{"error": revertErr.Error()})
 		return
 	}
@@ -91,7 +92,7 @@ func (r *OperationTraceDB) HandleOperationCreate(c *gin.Context) {
 
 	ID, dbErr := performOperation(r, c, opr)
 
-	if errors.Is(dbErr, common.ErrOperationNoMatch) {
+	if errors.Is(dbErr, common.ErrOperationNoMatch) || errors.Is(dbErr, common.ErrOperationConflict) {
 		c.JSON(http.StatusConflict, gin.H{"error": dbErr.Error()})
 		return
 	}
@@ -172,6 +173,9 @@ func performOperation(r *OperationTraceDB, ctx *gin.Context, req operationReq) (
 	for _, query := range renameStatements(*input.OldEmail, *input.NewEmail, input.OldKeycloakID, *input.NewKeycloakID) {
 		updatedRes, err := tx.Exec(ctx, query.SQL, query.args()...)
 		if err != nil {
+			if isUniqueViolation(err) {
+				return 0, fmt.Errorf("new keycloak id or email: %w", common.ErrOperationConflict)
+			}
 			return 0, fmt.Errorf("problem updating users: %w", err)
 		}
 		// Exactly one participant must start from this email and key, or nothing changes.
@@ -225,6 +229,9 @@ func revertOperation(r *OperationTraceDB, ctx *gin.Context, newEmail string, old
 	for _, query := range revert.Queries {
 		revertRes, err := tx.Exec(ctx, query.SQL, query.args()...)
 		if err != nil {
+			if isUniqueViolation(err) {
+				return fmt.Errorf("old keycloak id or email: %w", common.ErrOperationConflict)
+			}
 			return fmt.Errorf("problem reverting operation: %w", err)
 		}
 		if revertRes.RowsAffected() != 1 {
@@ -239,4 +246,10 @@ func revertOperation(r *OperationTraceDB, ctx *gin.Context, newEmail string, old
 	}
 
 	return tx.Commit(ctx)
+}
+
+// isUniqueViolation: the key or email being moved to is already taken.
+func isUniqueViolation(err error) bool {
+	var pgErr interface{ SQLState() string }
+	return errors.As(err, &pgErr) && pgErr.SQLState() == "23505"
 }
