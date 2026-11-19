@@ -12,13 +12,15 @@ type PartOptionAndCount struct {
 
 func (e *EventsDB) FetchTotalParticipantByOptionAndGroupBy(ctx context.Context, eventID string) ([]PartOptionAndCount, error) {
 	var eventIDQuery string
+	var args []interface{}
 	if eventID != "" {
-		eventIDQuery = ` WHERE event_id=` + eventID
+		eventIDQuery = ` WHERE event_id=$1`
+		args = append(args, eventID)
 	}
 
 	rows, err := e.Query(ctx, `select participation_option, count (participation_option) as qt 
 		from participation_status`+eventIDQuery+
-		` group by participation_option`)
+		` group by participation_option`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("e.Query: %w", err)
 	}
@@ -39,12 +41,14 @@ func (e *EventsDB) FetchTotalParticipantByOptionAndGroupBy(ctx context.Context, 
 
 func (e *EventsDB) FetchTotalParticipantByOption(ctx context.Context, eventID string) (int, error) {
 	var eventIDQuery string
+	var args []interface{}
 	if eventID != "" {
-		eventIDQuery = ` WHERE event_id=` + eventID
+		eventIDQuery = ` WHERE event_id=$1`
+		args = append(args, eventID)
 	}
 
 	var count int
-	if err := e.QueryRow(ctx, `select count (participation_option) as qt from participation_status`+eventIDQuery).
+	if err := e.QueryRow(ctx, `select count (participation_option) as qt from participation_status`+eventIDQuery, args...).
 		Scan(&count); err != nil {
 		return 0, err
 	}

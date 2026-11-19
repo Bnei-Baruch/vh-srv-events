@@ -153,6 +153,7 @@ func (e *EventsDB) GetParticipantByKeycloakID(ctx context.Context, id string) (*
 
 func (e *EventsDB) GetAllParticipants(ctx context.Context, skip int, limit int, eventId int, eventSlug string) ([]PartResponse, error) {
 	var query string
+	var args []interface{}
 
 	if eventId != 0 || eventSlug != "" {
 		var eventlOrSlugWhereQuery string
@@ -164,9 +165,10 @@ func (e *EventsDB) GetAllParticipants(ctx context.Context, skip int, limit int, 
 			AND p.id = ps.participant_id`, eventId)
 		} else {
 			eventlOrSlugFromQuery = `FROM participant as p, participation_status as ps, event as e`
-			eventlOrSlugWhereQuery = fmt.Sprintf(`WHERE e.slug = '%s'
+			eventlOrSlugWhereQuery = `WHERE e.slug = $1
 			AND ps.event_id = e.id
-			AND p.id = ps.participant_id`, eventSlug)
+			AND p.id = ps.participant_id`
+			args = append(args, eventSlug)
 		}
 
 		query = fmt.Sprintf(`SELECT 
@@ -205,7 +207,7 @@ func (e *EventsDB) GetAllParticipants(ctx context.Context, skip int, limit int, 
 			FROM participant LIMIT %d OFFSET %d`, limit, skip)
 	}
 
-	rows, err := e.Query(ctx, query)
+	rows, err := e.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("e.Query: %w", err)
 	}
@@ -235,7 +237,7 @@ func (e *EventsDB) UpdateParticipantByID(ctx context.Context, req Part, id strin
 		return common.ErrInvalidValues
 	}
 
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE participant SET %s WHERE id=%s`, toUpdate, id), toUpdateArgs...)
+	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE participant SET %s WHERE id=$%d`, toUpdate, len(toUpdateArgs)+1), append(toUpdateArgs, id)...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}

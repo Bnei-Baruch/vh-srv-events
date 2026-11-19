@@ -59,7 +59,7 @@ func (e *EventsDB) UpdateParticipantOptionByName(ctx context.Context, req Partic
 		return common.ErrInvalidValues
 	}
 
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE participation_option SET %s WHERE name='%s'`, toUpdate, name), toUpdateArgs...)
+	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE participation_option SET %s WHERE name=$%d`, toUpdate, len(toUpdateArgs)+1), append(toUpdateArgs, name)...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
