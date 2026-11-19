@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"gitlab.bbdev.team/vh/vh-srv-events/common"
 )
@@ -48,12 +47,13 @@ func (e *EventsDB) GetAllAudience(ctx context.Context, skip int, limit int) ([]A
 
 func (e *EventsDB) UpdateAudienceByName(ctx context.Context, req Audience, name string) error {
 
-	toUpdate, toUpdateArgs := prepareAudienceUpdateQuery(req)
-	if len(toUpdateArgs) == 0 {
+	c := audienceUpdateColumns(req)
+	if c.empty() {
 		return common.ErrInvalidValues
 	}
+	query, args := c.update("audience", "name", name)
 
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE audience SET %s WHERE name=$%d`, toUpdate, len(toUpdateArgs)+1), append(toUpdateArgs, name)...)
+	updateRes, err := e.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
@@ -66,12 +66,13 @@ func (e *EventsDB) UpdateAudienceByName(ctx context.Context, req Audience, name 
 }
 
 func (e *EventsDB) CreateNewAudience(ctx context.Context, req Audience) error {
-	createString, numString, createQueryArgs := prepareAudienceCreateQuery(req)
-	if len(createQueryArgs) != 0 {
+	c := audienceCreateColumns(req)
+	if !c.empty() {
 		return common.ErrInvalidValues
 	}
+	query, args := c.insert("audience")
 
-	_, err := e.Exec(ctx, fmt.Sprintf(`INSERT INTO audience (%s) VALUES (%s)`, createString, numString), createQueryArgs...)
+	_, err := e.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
@@ -84,42 +85,16 @@ func (e *EventsDB) DeleteAudienceByName(ctx context.Context, name string) error 
 	return err
 }
 
-func prepareAudienceUpdateQuery(req Audience) (string, []interface{}) {
-	var updateStrings []string
-	var args []interface{}
-
-	if req.Name != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("name=$%d", len(updateStrings)+1))
-		args = append(args, *req.Name)
-	}
-	if req.Description != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("description=$%d", len(updateStrings)+1))
-		args = append(args, *req.Description)
-	}
-
-	updateArgument := strings.Join(updateStrings, ",")
-
-	return updateArgument, args
+func audienceUpdateColumns(req Audience) columns {
+	var c columns
+	setIf(&c, "name", req.Name)
+	setIf(&c, "description", req.Description)
+	return c
 }
 
-func prepareAudienceCreateQuery(req Audience) (string, string, []interface{}) {
-	var createStrings []string
-	var numString []string
-	var args []interface{}
-
-	if req.Name != nil {
-		createStrings = append(createStrings, "name")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Name)
-	}
-	if req.Description != nil {
-		createStrings = append(createStrings, "description")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Description)
-	}
-
-	concatedCreateString := strings.Join(createStrings, ",")
-	concatedNumString := strings.Join(numString, ",")
-
-	return concatedCreateString, concatedNumString, args
+func audienceCreateColumns(req Audience) columns {
+	var c columns
+	setIf(&c, "name", req.Name)
+	setIf(&c, "description", req.Description)
+	return c
 }

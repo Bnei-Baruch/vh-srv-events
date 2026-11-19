@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"gitlab.bbdev.team/vh/vh-srv-events/common"
@@ -73,12 +72,14 @@ func (e *EventsDB) GetAllItemBroadcastURL(ctx context.Context, skip int, limit i
 }
 
 func (e *EventsDB) UpdateItemBroadcastURLByID(ctx context.Context, req ItemBroadcastURL, id string) error {
-	toUpdate, toUpdateArgs := prepareItemBroadcastURLUpdateQuery(req)
-	if len(toUpdateArgs) == 0 {
+	c := itemBroadcastURLUpdateColumns(req)
+	if c.empty() {
 		return common.ErrInvalidValues
 	}
+	c.set("updated_at", time.Now())
+	query, args := c.update("item_broadcast_url", "id", id)
 
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE item_broadcast_url SET %s WHERE id=$%d`, toUpdate, len(toUpdateArgs)+1), append(toUpdateArgs, id)...)
+	updateRes, err := e.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
@@ -102,25 +103,9 @@ func (e *EventsDB) DeleteItemBroadcastURLByID(ctx context.Context, id string) er
 	return err
 }
 
-func prepareItemBroadcastURLUpdateQuery(req ItemBroadcastURL) (string, []interface{}) {
-	var updateStrings []string
-	var args []interface{}
-
-	if req.BoradcastURLID != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("broadcast_url_id=$%d", len(updateStrings)+1))
-		args = append(args, *req.BoradcastURLID)
-	}
-	if req.ItemID != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("item_id=$%d", len(updateStrings)+1))
-		args = append(args, *req.ItemID)
-	}
-
-	if len(args) != 0 {
-		updateStrings = append(updateStrings, fmt.Sprintf("updated_at=$%d", len(updateStrings)+1))
-		args = append(args, time.Now())
-	}
-
-	updateArgument := strings.Join(updateStrings, ",")
-
-	return updateArgument, args
+func itemBroadcastURLUpdateColumns(req ItemBroadcastURL) columns {
+	var c columns
+	setIf(&c, "broadcast_url_id", req.BoradcastURLID)
+	setIf(&c, "item_id", req.ItemID)
+	return c
 }

@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"gitlab.bbdev.team/vh/vh-srv-events/common"
@@ -78,13 +77,14 @@ func (e *EventsDB) GetAllEventPartOption(ctx context.Context, skip int, limit in
 }
 
 func (e *EventsDB) UpdateEventPartOptionByID(ctx context.Context, req EventPartOption, id string) error {
-	toUpdate, toUpdateArgs := prepareEventPartOptionUpdateQuery(req)
-
-	if len(toUpdateArgs) == 0 {
+	c := eventPartOptionUpdateColumns(req)
+	if c.empty() {
 		return common.ErrInvalidValues
 	}
+	c.set("updated_at", time.Now())
+	query, args := c.update("event_participation_option", "id", id)
 
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE event_participation_option SET %s WHERE id=$%d`, toUpdate, len(toUpdateArgs)+1), append(toUpdateArgs, id)...)
+	updateRes, err := e.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
@@ -97,12 +97,13 @@ func (e *EventsDB) UpdateEventPartOptionByID(ctx context.Context, req EventPartO
 }
 
 func (e *EventsDB) CreateNewEventPartOption(ctx context.Context, req EventPartOption) error {
-	createString, numString, createQueryArgs := prepareEventPartOptionCreateQuery(req)
-	if len(createQueryArgs) == 0 {
+	c := eventPartOptionCreateColumns(req)
+	if c.empty() {
 		return common.ErrInvalidValues
 	}
+	query, args := c.insert("event_participation_option")
 
-	_, err := e.Exec(ctx, fmt.Sprintf(`INSERT INTO event_participation_option (%s) VALUES (%s)`, createString, numString), createQueryArgs...)
+	_, err := e.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
@@ -115,56 +116,18 @@ func (e *EventsDB) DeleteEventPartOptionByID(ctx context.Context, id string) err
 	return err
 }
 
-func prepareEventPartOptionUpdateQuery(req EventPartOption) (string, []interface{}) {
-	var updateStrings []string
-	var args []interface{}
-
-	if req.EventID != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("event_id=$%d", len(updateStrings)+1))
-		args = append(args, *req.EventID)
-	}
-	if req.ParticipationOption != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("participation_option=$%d", len(updateStrings)+1))
-		args = append(args, *req.ParticipationOption)
-	}
-	if req.Deleted != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("deleted=$%d", len(updateStrings)+1))
-		args = append(args, *req.Deleted)
-	}
-
-	if len(args) != 0 {
-		updateStrings = append(updateStrings, fmt.Sprintf("updated_at=$%d", len(updateStrings)+1))
-		args = append(args, time.Now())
-	}
-
-	updateArgument := strings.Join(updateStrings, ",")
-
-	return updateArgument, args
+func eventPartOptionUpdateColumns(req EventPartOption) columns {
+	var c columns
+	setIf(&c, "event_id", req.EventID)
+	setIf(&c, "participation_option", req.ParticipationOption)
+	setIf(&c, "deleted", req.Deleted)
+	return c
 }
 
-func prepareEventPartOptionCreateQuery(req EventPartOption) (string, string, []interface{}) {
-	var createStrings []string
-	var numString []string
-	var args []interface{}
-
-	if req.EventID != nil {
-		createStrings = append(createStrings, "event_id")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.EventID)
-	}
-	if req.ParticipationOption != nil {
-		createStrings = append(createStrings, "participation_option")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.ParticipationOption)
-	}
-	if req.Deleted != nil {
-		createStrings = append(createStrings, "deleted")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Deleted)
-	}
-
-	concatedCreateString := strings.Join(createStrings, ",")
-	concatedNumString := strings.Join(numString, ",")
-
-	return concatedCreateString, concatedNumString, args
+func eventPartOptionCreateColumns(req EventPartOption) columns {
+	var c columns
+	setIf(&c, "event_id", req.EventID)
+	setIf(&c, "participation_option", req.ParticipationOption)
+	setIf(&c, "deleted", req.Deleted)
+	return c
 }
