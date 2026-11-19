@@ -120,7 +120,11 @@ func (e *EventsDB) GetAllParticipationStatus(ctx context.Context, skip string, l
 	email string, gender string, partOption string, firstName string, lastName string) ([]ParticipationStatusResponse, error) {
 	var args sqlArgs
 	userDbWhereQuery, orderByQuery := buildAndGetWhereQuery(&args, eventID, keycloakID, country, email, gender, partOption, firstName, lastName)
-	limitOffsetString := " LIMIT " + args.add(limit) + " OFFSET " + args.add(skip)
+	// "ALL" (CSV export) means no limit; it is not a number to bind.
+	limitOffsetString := " OFFSET " + args.add(skip)
+	if limit != "ALL" {
+		limitOffsetString = " LIMIT " + args.add(limit) + limitOffsetString
+	}
 
 	rows, err := e.Query(ctx, `select 
 	participation_status.id,
