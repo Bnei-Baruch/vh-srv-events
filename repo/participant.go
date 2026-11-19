@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v4"
-	"strings"
 	"time"
 
 	"gitlab.bbdev.team/vh/vh-srv-events/common"
@@ -232,12 +231,14 @@ func (e *EventsDB) GetAllParticipants(ctx context.Context, skip int, limit int, 
 }
 
 func (e *EventsDB) UpdateParticipantByID(ctx context.Context, req Part, id string) error {
-	toUpdate, toUpdateArgs := prepareParticipantUpdateQuery(req)
-	if len(toUpdateArgs) == 0 {
+	c := participantUpdateColumns(req)
+	if c.empty() {
 		return common.ErrInvalidValues
 	}
+	c.set("updated_at", time.Now())
+	query, args := c.update("participant", "id", id)
 
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE participant SET %s WHERE id=$%d`, toUpdate, len(toUpdateArgs)+1), append(toUpdateArgs, id)...)
+	updateRes, err := e.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
@@ -250,14 +251,14 @@ func (e *EventsDB) UpdateParticipantByID(ctx context.Context, req Part, id strin
 }
 
 func (e *EventsDB) CreateNewParticipant(ctx context.Context, req Part) (int, error) {
-	createString, numString, createQueryArgs := prepareParticipantCreateQuery(req)
-	if len(createQueryArgs) == 0 {
+	c := participantCreateColumns(req)
+	if c.empty() {
 		return 0, common.ErrInvalidValues
 	}
+	query, args := c.insert("participant")
 
 	var ID int
-	if err := e.QueryRow(ctx, fmt.Sprintf(`INSERT INTO participant (%s) VALUES (%s) RETURNING id`, createString, numString),
-		createQueryArgs...).Scan(&ID); err != nil {
+	if err := e.QueryRow(ctx, query+` RETURNING id`, args...).Scan(&ID); err != nil {
 		return 0, err
 	}
 
@@ -282,119 +283,32 @@ func (e *EventsDB) IsSubjectID(ctx context.Context, keycloakID, accountID string
 	return true, nil
 }
 
-func prepareParticipantUpdateQuery(req Part) (string, []interface{}) {
-	var updateStrings []string
-	var args []interface{}
-
-	if req.KeycloakID != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("keycloak_id=$%d", len(updateStrings)+1))
-		args = append(args, *req.KeycloakID)
-	}
-	if req.FirstLanguage != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("first_language=$%d", len(updateStrings)+1))
-		args = append(args, *req.FirstLanguage)
-	}
-	if req.EmailLanguage != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("email_language=$%d", len(updateStrings)+1))
-		args = append(args, *req.EmailLanguage)
-	}
-	if req.DOB != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("dob=$%d", len(updateStrings)+1))
-		args = append(args, *req.DOB)
-	}
-	if req.Gender != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("gender=$%d", len(updateStrings)+1))
-		args = append(args, *req.Gender)
-	}
-	if req.Email != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("email=$%d", len(updateStrings)+1))
-		args = append(args, *req.Email)
-	}
-	if req.Country != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("country=$%d", len(updateStrings)+1))
-		args = append(args, *req.Country)
-	}
-	if req.PhoneNumber != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("phone_number=$%d", len(updateStrings)+1))
-		args = append(args, *req.PhoneNumber)
-	}
-	if req.FirstName != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("first_name=$%d", len(updateStrings)+1))
-		args = append(args, *req.FirstName)
-	}
-	if req.LastName != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("last_name=$%d", len(updateStrings)+1))
-		args = append(args, *req.LastName)
-	}
-
-	if len(args) != 0 {
-		updateStrings = append(updateStrings, fmt.Sprintf("updated_at=$%d", len(updateStrings)+1))
-		args = append(args, time.Now())
-	}
-
-	updateArgument := strings.Join(updateStrings, ",")
-
-	return updateArgument, args
+func participantUpdateColumns(req Part) columns {
+	var c columns
+	setIf(&c, "keycloak_id", req.KeycloakID)
+	setIf(&c, "first_language", req.FirstLanguage)
+	setIf(&c, "email_language", req.EmailLanguage)
+	setIf(&c, "dob", req.DOB)
+	setIf(&c, "gender", req.Gender)
+	setIf(&c, "email", req.Email)
+	setIf(&c, "country", req.Country)
+	setIf(&c, "phone_number", req.PhoneNumber)
+	setIf(&c, "first_name", req.FirstName)
+	setIf(&c, "last_name", req.LastName)
+	return c
 }
 
-func prepareParticipantCreateQuery(req Part) (string, string, []interface{}) {
-	var createStrings []string
-	var numString []string
-	var args []interface{}
-
-	if req.KeycloakID != nil {
-		createStrings = append(createStrings, "keycloak_id")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.KeycloakID)
-	}
-	if req.FirstLanguage != nil {
-		createStrings = append(createStrings, "first_language")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.FirstLanguage)
-	}
-	if req.EmailLanguage != nil {
-		createStrings = append(createStrings, "email_language")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.EmailLanguage)
-	}
-	if req.DOB != nil {
-		createStrings = append(createStrings, "dob")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.DOB)
-	}
-	if req.Gender != nil {
-		createStrings = append(createStrings, "gender")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Gender)
-	}
-	if req.Email != nil {
-		createStrings = append(createStrings, "email")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Email)
-	}
-	if req.Country != nil {
-		createStrings = append(createStrings, "country")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Country)
-	}
-	if req.PhoneNumber != nil {
-		createStrings = append(createStrings, "phone_number")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.PhoneNumber)
-	}
-	if req.FirstName != nil {
-		createStrings = append(createStrings, "first_name")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.FirstName)
-	}
-	if req.LastName != nil {
-		createStrings = append(createStrings, "last_name")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.LastName)
-	}
-
-	concatedCreateString := strings.Join(createStrings, ",")
-	concatedNumString := strings.Join(numString, ",")
-
-	return concatedCreateString, concatedNumString, args
+func participantCreateColumns(req Part) columns {
+	var c columns
+	setIf(&c, "keycloak_id", req.KeycloakID)
+	setIf(&c, "first_language", req.FirstLanguage)
+	setIf(&c, "email_language", req.EmailLanguage)
+	setIf(&c, "dob", req.DOB)
+	setIf(&c, "gender", req.Gender)
+	setIf(&c, "email", req.Email)
+	setIf(&c, "country", req.Country)
+	setIf(&c, "phone_number", req.PhoneNumber)
+	setIf(&c, "first_name", req.FirstName)
+	setIf(&c, "last_name", req.LastName)
+	return c
 }

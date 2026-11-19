@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"gitlab.bbdev.team/vh/vh-srv-events/common"
@@ -79,12 +78,14 @@ func (e *EventsDB) GetAllURL(ctx context.Context, skip int, limit int) ([]Broadc
 }
 
 func (e *EventsDB) UpdateURLByID(ctx context.Context, req BroadcastURL, id string) error {
-	toUpdate, toUpdateArgs := prepareURLUpdateQuery(req)
-	if len(toUpdateArgs) == 0 {
+	c := urlUpdateColumns(req)
+	if c.empty() {
 		return common.ErrInvalidValues
 	}
+	c.set("updated_at", time.Now())
+	query, args := c.update("broadcast_url", "id", id)
 
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE broadcast_url SET %s WHERE id=$%d`, toUpdate, len(toUpdateArgs)+1), append(toUpdateArgs, id)...)
+	updateRes, err := e.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
@@ -111,29 +112,10 @@ func (e *EventsDB) DeleteURLByID(ctx context.Context, id string) error {
 	return err
 }
 
-func prepareURLUpdateQuery(req BroadcastURL) (string, []interface{}) {
-	var updateStrings []string
-	var args []interface{}
-
-	if req.URL != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("url=$%d", len(updateStrings)+1))
-		args = append(args, *req.URL)
-	}
-	if req.Platform != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("platform=$%d", len(updateStrings)+1))
-		args = append(args, *req.Platform)
-	}
-	if req.Language != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("language=$%d", len(updateStrings)+1))
-		args = append(args, *req.Language)
-	}
-
-	if len(args) != 0 {
-		updateStrings = append(updateStrings, fmt.Sprintf("updated_at=$%d", len(updateStrings)+1))
-		args = append(args, time.Now())
-	}
-
-	updateArgument := strings.Join(updateStrings, ",")
-
-	return updateArgument, args
+func urlUpdateColumns(req BroadcastURL) columns {
+	var c columns
+	setIf(&c, "url", req.URL)
+	setIf(&c, "platform", req.Platform)
+	setIf(&c, "language", req.Language)
+	return c
 }

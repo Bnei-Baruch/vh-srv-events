@@ -232,11 +232,13 @@ func (e *EventsDB) GetAllEvent(ctx context.Context, skip int, limit int, slug st
 }
 
 func (e *EventsDB) UpdateEventByID(ctx context.Context, req Event, id string) error {
-	toUpdate, toUpdateArgs := prepareEventUpdateQuery(req)
-	if len(toUpdateArgs) == 0 {
+	c := eventUpdateColumns(req)
+	if c.empty() {
 		return common.ErrInvalidValues
 	}
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE event SET %s WHERE id=$%d`, toUpdate, len(toUpdateArgs)+1), append(toUpdateArgs, id)...)
+	c.set("updated_at", time.Now())
+	query, args := c.update("event", "id", id)
+	updateRes, err := e.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
@@ -249,12 +251,13 @@ func (e *EventsDB) UpdateEventByID(ctx context.Context, req Event, id string) er
 }
 
 func (e *EventsDB) CreateEvent(ctx context.Context, req Event) error {
-	createString, numString, createQueryArgs := prepareEventCreateQuery(req)
-	if len(createQueryArgs) == 0 {
+	c := eventCreateColumns(req)
+	if c.empty() {
 		return common.ErrInvalidValues
 	}
+	query, args := c.insert("event")
 
-	_, err := e.Exec(ctx, fmt.Sprintf(`INSERT INTO event (%s) VALUES (%s)`, createString, numString), createQueryArgs...)
+	_, err := e.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
@@ -289,148 +292,44 @@ func (e *EventsDB) DeleteHardEventByID(ctx context.Context, id string) error {
 	return err
 }
 
-func prepareEventUpdateQuery(req Event) (string, []interface{}) {
-	var updateStrings []string
-	var args []interface{}
-
-	if req.RegistrationRequired != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("registration_required=$%d", len(updateStrings)+1))
-		args = append(args, *req.RegistrationRequired)
-	}
-	if req.RegistrationStatus != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("registration_status=$%d", len(updateStrings)+1))
-		args = append(args, *req.RegistrationStatus)
-	}
-	if req.Audience != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("audience=$%d", len(updateStrings)+1))
-		args = append(args, *req.Audience)
-	}
-	if req.Slug != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("slug=$%d", len(updateStrings)+1))
-		args = append(args, *req.Slug)
-	}
-	if req.Name != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("name=$%d", len(updateStrings)+1))
-		args = append(args, *req.Name)
-	}
-	if req.Logo != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("logo=$%d", len(updateStrings)+1))
-		args = append(args, *req.Logo)
-	}
-	if req.Content != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("content=$%d", len(updateStrings)+1))
-		args = append(args, *req.Content)
-	}
-	if req.Deleted != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("deleted=$%d", len(updateStrings)+1))
-		args = append(args, *req.Deleted)
-	}
-	if req.StartsOn != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("starts_on=$%d", len(updateStrings)+1))
-		args = append(args, *req.StartsOn)
-	}
-	if req.EndsOn != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("ends_on=$%d", len(updateStrings)+1))
-		args = append(args, *req.EndsOn)
-	}
-	if req.DateConfirmed != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("date_confirmed=$%d", len(updateStrings)+1))
-		args = append(args, *req.DateConfirmed)
-	}
-	if req.ArchiveLink != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("archive_link=$%d", len(updateStrings)+1))
-		args = append(args, *req.ArchiveLink)
-	}
-	if req.Published != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("published=$%d", len(updateStrings)+1))
-		args = append(args, *req.Published)
-	}
-
-	if len(args) != 0 {
-		updateStrings = append(updateStrings, fmt.Sprintf("updated_at=$%d", len(updateStrings)+1))
-		args = append(args, time.Now())
-	}
-
-	updateArgument := strings.Join(updateStrings, ",")
-
-	return updateArgument, args
+func eventUpdateColumns(req Event) columns {
+	var c columns
+	setIf(&c, "registration_required", req.RegistrationRequired)
+	setIf(&c, "registration_status", req.RegistrationStatus)
+	setIf(&c, "audience", req.Audience)
+	setIf(&c, "slug", req.Slug)
+	setIf(&c, "name", req.Name)
+	setIf(&c, "logo", req.Logo)
+	setIf(&c, "content", req.Content)
+	setIf(&c, "deleted", req.Deleted)
+	setIf(&c, "starts_on", req.StartsOn)
+	setIf(&c, "ends_on", req.EndsOn)
+	setIf(&c, "date_confirmed", req.DateConfirmed)
+	setIf(&c, "archive_link", req.ArchiveLink)
+	setIf(&c, "published", req.Published)
+	return c
 }
 
-func prepareEventCreateQuery(req Event) (string, string, []interface{}) {
-	var createStrings []string
-	var numString []string
-	var args []interface{}
-
-	if req.RegistrationRequired != nil {
-		createStrings = append(createStrings, "registration_required")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.RegistrationRequired)
-	}
-	if req.RegistrationStatus != nil {
-		createStrings = append(createStrings, "registration_status")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.RegistrationStatus)
-	}
-	if req.Audience != nil {
-		createStrings = append(createStrings, "audience")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Audience)
-	}
-	if req.Slug != nil {
-		createStrings = append(createStrings, "slug")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Slug)
-	}
-	if req.Name != nil {
-		createStrings = append(createStrings, "name")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Name)
-	}
+func eventCreateColumns(req Event) columns {
+	var c columns
+	setIf(&c, "registration_required", req.RegistrationRequired)
+	setIf(&c, "registration_status", req.RegistrationStatus)
+	setIf(&c, "audience", req.Audience)
+	setIf(&c, "slug", req.Slug)
+	setIf(&c, "name", req.Name)
 	if req.Logo != nil && *req.Logo != "" {
-		createStrings = append(createStrings, "logo")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Logo)
+		c.set("logo", *req.Logo)
 	}
 	if req.Content != nil && *req.Content != "" {
-		createStrings = append(createStrings, "content")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Content)
+		c.set("content", *req.Content)
 	}
-	if req.Deleted != nil {
-		createStrings = append(createStrings, "deleted")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Deleted)
-	}
-	if req.StartsOn != nil {
-		createStrings = append(createStrings, "starts_on")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.StartsOn)
-	}
-	if req.EndsOn != nil {
-		createStrings = append(createStrings, "ends_on")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.EndsOn)
-	}
-	if req.DateConfirmed != nil {
-		createStrings = append(createStrings, "date_confirmed")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.DateConfirmed)
-	}
-	if req.ArchiveLink != nil {
-		createStrings = append(createStrings, "archive_link")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.ArchiveLink)
-	}
-	if req.Published != nil {
-		createStrings = append(createStrings, "published")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Published)
-	}
-
-	concatedCreateString := strings.Join(createStrings, ",")
-	concatedNumString := strings.Join(numString, ",")
-
-	return concatedCreateString, concatedNumString, args
+	setIf(&c, "deleted", req.Deleted)
+	setIf(&c, "starts_on", req.StartsOn)
+	setIf(&c, "ends_on", req.EndsOn)
+	setIf(&c, "date_confirmed", req.DateConfirmed)
+	setIf(&c, "archive_link", req.ArchiveLink)
+	setIf(&c, "published", req.Published)
+	return c
 }
 
 func buildAndGetWhereEventQuery(args *sqlArgs, slug string) string {

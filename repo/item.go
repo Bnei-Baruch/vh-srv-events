@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"gitlab.bbdev.team/vh/vh-srv-events/common"
@@ -91,12 +90,14 @@ func (e *EventsDB) GetAllItem(ctx context.Context, skip int, limit int) ([]ItemR
 }
 
 func (e *EventsDB) UpdateItemByID(ctx context.Context, req Item, id string) error {
-	toUpdate, toUpdateArgs := prepareItemUpdateQuery(req)
-	if len(toUpdateArgs) == 0 {
+	c := itemUpdateColumns(req)
+	if c.empty() {
 		return common.ErrInvalidValues
 	}
+	c.set("updated_at", time.Now())
+	query, args := c.update("item", "id", id)
 
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE item SET %s WHERE id=$%d`, toUpdate, len(toUpdateArgs)+1), append(toUpdateArgs, id)...)
+	updateRes, err := e.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
@@ -109,12 +110,13 @@ func (e *EventsDB) UpdateItemByID(ctx context.Context, req Item, id string) erro
 }
 
 func (e *EventsDB) CreateNewItem(ctx context.Context, req Item) error {
-	createString, numString, createQueryArgs := prepareItemCreateQuery(req)
-	if len(createQueryArgs) == 0 {
+	c := itemCreateColumns(req)
+	if c.empty() {
 		return common.ErrInvalidValues
 	}
+	query, args := c.insert("item")
 
-	_, err := e.Exec(ctx, fmt.Sprintf(`INSERT INTO item (%s) VALUES (%s)`, createString, numString), createQueryArgs...)
+	_, err := e.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
@@ -127,79 +129,23 @@ func (e *EventsDB) DeleteItemByID(ctx context.Context, id string) error {
 	return err
 }
 
-func prepareItemUpdateQuery(req Item) (string, []interface{}) {
-	var updateStrings []string
-	var args []interface{}
-
-	if req.StartDate != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("start_date=$%d", len(updateStrings)+1))
-		args = append(args, *req.StartDate)
-	}
-	if req.Duration != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("duration=$%d", len(updateStrings)+1))
-		args = append(args, *req.Duration)
-	}
-	if req.Name != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("name=$%d", len(updateStrings)+1))
-		args = append(args, *req.Name)
-	}
-	if req.OriginalLanguage != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("original_language=$%d", len(updateStrings)+1))
-		args = append(args, *req.OriginalLanguage)
-	}
-	if req.Translated != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("translated=$%d", len(updateStrings)+1))
-		args = append(args, *req.Translated)
-	}
-
-	if len(args) != 0 {
-		updateStrings = append(updateStrings, fmt.Sprintf("updated_at=$%d", len(updateStrings)+1))
-		args = append(args, time.Now())
-	}
-
-	updateArgument := strings.Join(updateStrings, ",")
-
-	return updateArgument, args
+func itemUpdateColumns(req Item) columns {
+	var c columns
+	setIf(&c, "start_date", req.StartDate)
+	setIf(&c, "duration", req.Duration)
+	setIf(&c, "name", req.Name)
+	setIf(&c, "original_language", req.OriginalLanguage)
+	setIf(&c, "translated", req.Translated)
+	return c
 }
 
-func prepareItemCreateQuery(req Item) (string, string, []interface{}) {
-	var createStrings []string
-	var numString []string
-	var args []interface{}
-
-	if req.StartDate != nil {
-		createStrings = append(createStrings, "start_date")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.StartDate)
-	}
-	if req.Duration != nil {
-		createStrings = append(createStrings, "duration")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Duration)
-	}
-	if req.Name != nil {
-		createStrings = append(createStrings, "name")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Name)
-	}
-	if req.Content != nil {
-		createStrings = append(createStrings, "content")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Content)
-	}
-	if req.OriginalLanguage != nil {
-		createStrings = append(createStrings, "original_language")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.OriginalLanguage)
-	}
-	if req.Translated != nil {
-		createStrings = append(createStrings, "translated")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Translated)
-	}
-
-	concatedCreateString := strings.Join(createStrings, ",")
-	concatedNumString := strings.Join(numString, ",")
-
-	return concatedCreateString, concatedNumString, args
+func itemCreateColumns(req Item) columns {
+	var c columns
+	setIf(&c, "start_date", req.StartDate)
+	setIf(&c, "duration", req.Duration)
+	setIf(&c, "name", req.Name)
+	setIf(&c, "content", req.Content)
+	setIf(&c, "original_language", req.OriginalLanguage)
+	setIf(&c, "translated", req.Translated)
+	return c
 }
