@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"strconv"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -20,6 +21,15 @@ func GetDBURL() string {
 		common.Config.DBHost,
 		common.Config.DBPort,
 		url.QueryEscape(common.Config.DBName))
+}
+
+// sqlArgs collects query arguments; add returns the $n placeholder for the
+// value it appends.
+type sqlArgs []interface{}
+
+func (a *sqlArgs) add(v interface{}) string {
+	*a = append(*a, v)
+	return "$" + strconv.Itoa(len(*a))
 }
 
 func SyncDBStructInsertionAndMigrations() error {
