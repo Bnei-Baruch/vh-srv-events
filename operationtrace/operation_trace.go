@@ -122,15 +122,16 @@ func (q sqlQuery) args() []interface{} {
 
 // renameStatements moves fromEmail to toEmail. With fromKc set, the
 // participant also moves from fromKc to toKc; without it, only the email of
-// toKc's participant changes. A revert is the same call with the sides
-// swapped.
+// toKc's participant changes. Either way the participant must still have
+// both fromEmail and the starting key. A revert is the same call with the
+// sides swapped.
 func renameStatements(fromEmail, toEmail string, fromKc *string, toKc string) []sqlQuery {
 	if fromKc == nil {
 		return []sqlQuery{{`UPDATE participant SET email = $1 WHERE email = $2 AND keycloak_id = $3`,
 			[]string{toEmail, fromEmail, toKc}}}
 	}
-	return []sqlQuery{{`UPDATE participant SET keycloak_id = $1, email = $2 WHERE keycloak_id = $3`,
-		[]string{toKc, toEmail, *fromKc}}}
+	return []sqlQuery{{`UPDATE participant SET keycloak_id = $1, email = $2 WHERE keycloak_id = $3 AND email = $4`,
+		[]string{toKc, toEmail, *fromKc, fromEmail}}}
 }
 
 // revertStatements undoes renameStatements for the same input.
