@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type EventsRepository interface {
@@ -95,9 +95,14 @@ type EventsDB struct {
 }
 
 func NewEventsDB(ctx context.Context) (EventsRepository, error) {
-	pool, err := pgxpool.Connect(ctx, GetDBURL())
+	pool, err := pgxpool.New(ctx, GetDBURL())
 	if err != nil {
-		return nil, fmt.Errorf("pgxpool.Connect: %w", err)
+		return nil, fmt.Errorf("pgxpool.New: %w", err)
+	}
+	// v5 connects lazily; v4's Connect dialed here, so startup still fails on an unreachable DB.
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("pool.Ping: %w", err)
 	}
 
 	return &EventsDB{Pool: pool}, nil

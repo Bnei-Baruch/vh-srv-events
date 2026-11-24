@@ -11,7 +11,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/hellofresh/health-go/v5"
-	healthpgx "github.com/hellofresh/health-go/v5/checks/pgx4"
+	healthpgx "github.com/hellofresh/health-go/v5/checks/pgx5"
 
 	"gitlab.bbdev.team/vh/vh-srv-events/api/middleware"
 	"gitlab.bbdev.team/vh/vh-srv-events/common"
