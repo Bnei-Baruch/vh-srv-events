@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/gocarina/gocsv"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 
 	"gitlab.bbdev.team/vh/vh-srv-events/common"
 	"gitlab.bbdev.team/vh/vh-srv-events/pkg/utils"
