@@ -186,12 +186,14 @@ func (e *EventsDB) GetAllParticipationStatus(ctx context.Context, skip string, l
 }
 
 func (e *EventsDB) UpdateParticipationStatusByID(ctx context.Context, req ParticipationStatusStruct, id string) error {
-	toUpdate, toUpdateArgs := prepareParticipationStatusUpdateQuery(req)
-	if len(toUpdateArgs) == 0 {
+	c := participationStatusUpdateColumns(req)
+	if c.empty() {
 		return common.ErrInvalidValues
 	}
+	c.set("updated_at", time.Now())
+	query, args := c.update("participation_status", "id", id)
 
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE participation_status SET %s WHERE id=$%d`, toUpdate, len(toUpdateArgs)+1), append(toUpdateArgs, id)...)
+	updateRes, err := e.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("o.Exec: %w", err)
 	}
@@ -204,14 +206,15 @@ func (e *EventsDB) UpdateParticipationStatusByID(ctx context.Context, req Partic
 }
 
 func (e *EventsDB) UpdateParticipationStatusByKcIDAndEventSlug(ctx context.Context, req ParticipationStatusStruct, kcID string, eventSlug string) error {
-	toUpdate, toUpdateArgs := prepareParticipationStatusUpdateQuery(req)
-	if len(toUpdateArgs) == 0 {
+	c := participationStatusUpdateColumns(req)
+	if c.empty() {
 		return common.ErrInvalidValues
 	}
+	c.set("updated_at", time.Now())
 
-	n := len(toUpdateArgs)
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE participation_status SET %s WHERE participant_id=(SELECT id FROM participant as p 
-		WHERE p.keycloak_id=$%d) AND event_id=(SELECT id FROM event as e WHERE e.slug=$%d)`, toUpdate, n+1, n+2), append(toUpdateArgs, kcID, eventSlug)...)
+	query := `UPDATE participation_status SET ` + c.setClause() + ` WHERE participant_id=(SELECT id FROM participant as p 
+		WHERE p.keycloak_id=` + c.args.add(kcID) + `) AND event_id=(SELECT id FROM event as e WHERE e.slug=` + c.args.add(eventSlug) + `)`
+	updateRes, err := e.Exec(ctx, query, c.args...)
 	if err != nil {
 		return fmt.Errorf("o.Exec: %w", err)
 	}
@@ -224,15 +227,15 @@ func (e *EventsDB) UpdateParticipationStatusByKcIDAndEventSlug(ctx context.Conte
 }
 
 func (e *EventsDB) CreateNewParticipationStatus(ctx context.Context, req PartStatusWithNotification) (int, error) {
-	createString, numString, createQueryArgs := prepareParticipationStatusCreateQuery(req.ParticipationStatusStruct)
-	if len(createQueryArgs) == 0 {
+	c := participationStatusCreateColumns(req.ParticipationStatusStruct)
+	if c.empty() {
 		return 0, common.ErrInvalidValues
 	}
+	query, args := c.insert("participation_status")
 
 	var id int
 
-	if err := e.QueryRow(ctx, fmt.Sprintf(`INSERT INTO participation_status (%s) VALUES (%s) RETURNING id`, createString, numString),
-		createQueryArgs...).Scan(&id); err != nil {
+	if err := e.QueryRow(ctx, query+` RETURNING id`, args...).Scan(&id); err != nil {
 		if err == pgx.ErrNoRows {
 			return 0, fmt.Errorf("no rows affected")
 		}
@@ -278,89 +281,26 @@ func (e *EventsDB) DeleteParticipationStatusByID(ctx context.Context, id string)
 	return err
 }
 
-func prepareParticipationStatusUpdateQuery(req ParticipationStatusStruct) (string, []interface{}) {
-	var updateStrings []string
-	var args []interface{}
-
-	if req.ParticipationOption != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("participation_option=$%d", len(updateStrings)+1))
-		args = append(args, *req.ParticipationOption)
-	}
-	if req.ParticipantID != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("participant_id=$%d", len(updateStrings)+1))
-		args = append(args, *req.ParticipantID)
-	}
-	if req.EventID != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("event_id=$%d", len(updateStrings)+1))
-		args = append(args, *req.EventID)
-	}
-	if req.Confirmed != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("confirmed=$%d", len(updateStrings)+1))
-		args = append(args, *req.Confirmed)
-	}
-	if req.RegistrationDate != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("registration_date=$%d", len(updateStrings)+1))
-		args = append(args, *req.RegistrationDate)
-	}
-	if req.Deleted != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("deleted=$%d", len(updateStrings)+1))
-		args = append(args, *req.Deleted)
-		// Updating the deleted_at column in the database if deleted to true. # Implementation pending
-		// if *req.Deleted {
-		// 	updateStrings = append(updateStrings, fmt.Sprintf("deleted_at=$%d", len(updateStrings)+1))
-		// 	args = append(args, time.Now())
-		// }
-	}
-	if len(args) != 0 {
-		updateStrings = append(updateStrings, fmt.Sprintf("updated_at=$%d", len(updateStrings)+1))
-		args = append(args, time.Now())
-	}
-
-	updateArgument := strings.Join(updateStrings, ",")
-
-	return updateArgument, args
+func participationStatusUpdateColumns(req ParticipationStatusStruct) columns {
+	var c columns
+	setIf(&c, "participation_option", req.ParticipationOption)
+	setIf(&c, "participant_id", req.ParticipantID)
+	setIf(&c, "event_id", req.EventID)
+	setIf(&c, "confirmed", req.Confirmed)
+	setIf(&c, "registration_date", req.RegistrationDate)
+	setIf(&c, "deleted", req.Deleted)
+	return c
 }
 
-func prepareParticipationStatusCreateQuery(req ParticipationStatusStruct) (string, string, []interface{}) {
-	var createStrings []string
-	var numString []string
-	var args []interface{}
-
-	if req.ParticipationOption != nil {
-		createStrings = append(createStrings, "participation_option")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.ParticipationOption)
-	}
-	if req.ParticipantID != nil {
-		createStrings = append(createStrings, "participant_id")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.ParticipantID)
-	}
-	if req.EventID != nil {
-		createStrings = append(createStrings, "event_id")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.EventID)
-	}
-	if req.Confirmed != nil {
-		createStrings = append(createStrings, "confirmed")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Confirmed)
-	}
-	if req.RegistrationDate != nil {
-		createStrings = append(createStrings, "registration_date")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.RegistrationDate)
-	}
-	if req.Deleted != nil {
-		createStrings = append(createStrings, "deleted")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Deleted)
-	}
-
-	concatedCreateString := strings.Join(createStrings, ",")
-	concatedNumString := strings.Join(numString, ",")
-
-	return concatedCreateString, concatedNumString, args
+func participationStatusCreateColumns(req ParticipationStatusStruct) columns {
+	var c columns
+	setIf(&c, "participation_option", req.ParticipationOption)
+	setIf(&c, "participant_id", req.ParticipantID)
+	setIf(&c, "event_id", req.EventID)
+	setIf(&c, "confirmed", req.Confirmed)
+	setIf(&c, "registration_date", req.RegistrationDate)
+	setIf(&c, "deleted", req.Deleted)
+	return c
 }
 
 func buildAndGetWhereQuery(args *sqlArgs, eventID string, keycloakID string, country string, email string, gender string, partOption string, firstName string, lastName string) (string, string) {

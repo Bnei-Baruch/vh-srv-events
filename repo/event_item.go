@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"gitlab.bbdev.team/vh/vh-srv-events/common"
@@ -78,12 +77,14 @@ func (e *EventsDB) GetAllEventItem(ctx context.Context, skip int, limit int) ([]
 }
 
 func (e *EventsDB) UpdateEventItemByID(ctx context.Context, req EventItem, id string) error {
-	toUpdate, toUpdateArgs := prepareEventItemUpdateQuery(req)
-	if len(toUpdateArgs) == 0 {
+	c := eventItemUpdateColumns(req)
+	if c.empty() {
 		return common.ErrInvalidValues
 	}
+	c.set("updated_at", time.Now())
+	query, args := c.update("event_item", "id", id)
 
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE event_item SET %s WHERE id=$%d`, toUpdate, len(toUpdateArgs)+1), append(toUpdateArgs, id)...)
+	updateRes, err := e.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
@@ -96,12 +97,13 @@ func (e *EventsDB) UpdateEventItemByID(ctx context.Context, req EventItem, id st
 }
 
 func (e *EventsDB) CreateNewEventItem(ctx context.Context, req EventItem) error {
-	createString, numString, createQueryArgs := prepareEventItemCreateQuery(req)
-	if len(createQueryArgs) == 0 {
+	c := eventItemCreateColumns(req)
+	if c.empty() {
 		return common.ErrInvalidValues
 	}
+	query, args := c.insert("event_item")
 
-	_, err := e.Exec(ctx, fmt.Sprintf(`INSERT INTO event_item (%s) VALUES (%s)`, createString, numString), createQueryArgs...)
+	_, err := e.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
@@ -114,52 +116,17 @@ func (e *EventsDB) DeleteEventItemByID(ctx context.Context, id string) error {
 	return err
 }
 
-func prepareEventItemUpdateQuery(req EventItem) (string, []interface{}) {
-	var updateStrings []string
-	var args []interface{}
-
-	if req.EventID != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("event_id=$%d", len(updateStrings)+1))
-		args = append(args, *req.EventID)
-	}
-	if req.ItemID != nil {
-		updateStrings = append(updateStrings, fmt.Sprintf("item_id=$%d", len(updateStrings)+1))
-		args = append(args, *req.ItemID)
-	}
-
-	if len(args) != 0 {
-		updateStrings = append(updateStrings, fmt.Sprintf("updated_at=$%d", len(updateStrings)+1))
-		args = append(args, time.Now())
-	}
-
-	updateArgument := strings.Join(updateStrings, ",")
-
-	return updateArgument, args
+func eventItemUpdateColumns(req EventItem) columns {
+	var c columns
+	setIf(&c, "event_id", req.EventID)
+	setIf(&c, "item_id", req.ItemID)
+	return c
 }
 
-func prepareEventItemCreateQuery(req EventItem) (string, string, []interface{}) {
-	var createStrings []string
-	var numString []string
-	var args []interface{}
-
-	if req.EventID != nil {
-		createStrings = append(createStrings, "event_id")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.EventID)
-	}
-	if req.ItemID != nil {
-		createStrings = append(createStrings, "item_id")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.ItemID)
-	}
-	if req.Deleted != nil {
-		createStrings = append(createStrings, "deleted")
-		numString = append(numString, fmt.Sprintf("$%d", len(numString)+1))
-		args = append(args, *req.Deleted)
-	}
-
-	concatedCreateString := strings.Join(createStrings, ",")
-	concatedNumString := strings.Join(numString, ",")
-
-	return concatedCreateString, concatedNumString, args
+func eventItemCreateColumns(req EventItem) columns {
+	var c columns
+	setIf(&c, "event_id", req.EventID)
+	setIf(&c, "item_id", req.ItemID)
+	setIf(&c, "deleted", req.Deleted)
+	return c
 }

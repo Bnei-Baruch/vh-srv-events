@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -30,6 +31,53 @@ type sqlArgs []interface{}
 func (a *sqlArgs) add(v interface{}) string {
 	*a = append(*a, v)
 	return "$" + strconv.Itoa(len(*a))
+}
+
+// columns collects column = value pairs for a dynamic INSERT or UPDATE.
+// Column names are always literals from this package; values become $n args.
+type columns struct {
+	names []string
+	args  sqlArgs
+}
+
+func (c *columns) set(name string, v interface{}) {
+	c.names = append(c.names, name)
+	c.args = append(c.args, v)
+}
+
+// setIf adds the column only when v is non-nil.
+func setIf[T any](c *columns, name string, v *T) {
+	if v != nil {
+		c.set(name, *v)
+	}
+}
+
+func (c *columns) empty() bool { return len(c.names) == 0 }
+
+// insert returns INSERT INTO table (a,b) VALUES ($1,$2) and its args.
+func (c *columns) insert(table string) (string, []interface{}) {
+	nums := make([]string, len(c.names))
+	for i := range c.names {
+		nums[i] = "$" + strconv.Itoa(i+1)
+	}
+	return "INSERT INTO " + table + " (" + strings.Join(c.names, ",") + ") VALUES (" + strings.Join(nums, ",") + ")", c.args
+}
+
+// setClause returns a=$1,b=$2 for an UPDATE. Placeholders for a WHERE clause
+// can then be added with c.args.add.
+func (c *columns) setClause() string {
+	sets := make([]string, len(c.names))
+	for i, n := range c.names {
+		sets[i] = n + "=$" + strconv.Itoa(i+1)
+	}
+	return strings.Join(sets, ",")
+}
+
+// update returns UPDATE table SET a=$1,b=$2 WHERE whereCol=$3 and its args.
+func (c *columns) update(table, whereCol string, whereVal interface{}) (string, []interface{}) {
+	sql := "UPDATE " + table + " SET " + c.setClause()
+	sql += " WHERE " + whereCol + "=" + c.args.add(whereVal)
+	return sql, c.args
 }
 
 func SyncDBStructInsertionAndMigrations() error {
