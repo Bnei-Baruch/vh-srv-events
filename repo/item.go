@@ -96,7 +96,7 @@ func (e *EventsDB) UpdateItemByID(ctx context.Context, req Item, id string) erro
 		return common.ErrInvalidValues
 	}
 
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE item SET %s WHERE id=%s`, toUpdate, id), toUpdateArgs...)
+	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE item SET %s WHERE id=$%d`, toUpdate, len(toUpdateArgs)+1), append(toUpdateArgs, id)...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}

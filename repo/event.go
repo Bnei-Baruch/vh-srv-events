@@ -111,13 +111,17 @@ func (e *EventsDB) GetEventByID(ctx context.Context, id string) (*EventResponse,
 
 func (e *EventsDB) GetAllEvent(ctx context.Context, skip int, limit int, slug string, email string, kcID string) ([]EventResponse, error) {
 	var query string
+	var args sqlArgs
 
 	if email != "" || kcID != "" {
+		// Both subqueries below filter on the same $1.
 		var emailOrKcQuery string
 		if email != "" {
-			emailOrKcQuery = fmt.Sprintf("where p.email='%s'", email)
+			emailOrKcQuery = "where p.email=$1"
+			args = append(args, email)
 		} else {
-			emailOrKcQuery = fmt.Sprintf("where p.keycloak_id='%s'", kcID)
+			emailOrKcQuery = "where p.keycloak_id=$1"
+			args = append(args, kcID)
 		}
 
 		query = fmt.Sprintf(`select 
@@ -151,7 +155,7 @@ func (e *EventsDB) GetAllEvent(ctx context.Context, skip int, limit int, slug st
 			WHERE e.deleted = false
 			LIMIT %d OFFSET %d`, emailOrKcQuery, emailOrKcQuery, limit, skip)
 	} else {
-		whereQuery := buildAndGetWhereEventQuery(slug)
+		whereQuery := buildAndGetWhereEventQuery(&args, slug)
 
 		query = fmt.Sprintf(`select 
 		id,
@@ -173,7 +177,7 @@ func (e *EventsDB) GetAllEvent(ctx context.Context, skip int, limit int, slug st
 		from event`+whereQuery+" LIMIT %d OFFSET %d", limit, skip)
 	}
 
-	rows, err := e.Query(ctx, query)
+	rows, err := e.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("e.Query: %w", err)
 	}
@@ -232,7 +236,7 @@ func (e *EventsDB) UpdateEventByID(ctx context.Context, req Event, id string) er
 	if len(toUpdateArgs) == 0 {
 		return common.ErrInvalidValues
 	}
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE event SET %s WHERE id=%s`, toUpdate, id), toUpdateArgs...)
+	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE event SET %s WHERE id=$%d`, toUpdate, len(toUpdateArgs)+1), append(toUpdateArgs, id)...)
 	if err != nil {
 		return fmt.Errorf("e.Exec: %w", err)
 	}
@@ -259,12 +263,25 @@ func (e *EventsDB) CreateEvent(ctx context.Context, req Event) error {
 }
 
 func (e *EventsDB) DeleteEventByID(ctx context.Context, id string) error {
-	eventQuery := "UPDATE event SET deleted = true WHERE id=" + id + ";"
-	eventItemQuery := "UPDATE event_item SET deleted = true WHERE event_id=" + id + ";"
-	eventPartQuery := "UPDATE event_participation_option SET deleted = true WHERE event_id=" + id + ";"
-	eventStatusQuery := "UPDATE participation_status SET deleted = true WHERE event_id=" + id + ";"
-	_, err := e.Exec(ctx, eventQuery+eventItemQuery+eventPartQuery+eventStatusQuery)
-	return err
+	// The four updates used to go as one multi-statement string, which
+	// Postgres runs as a single transaction; keep that with an explicit tx.
+	tx, err := e.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	for _, q := range []string{
+		`UPDATE event SET deleted = true WHERE id=$1`,
+		`UPDATE event_item SET deleted = true WHERE event_id=$1`,
+		`UPDATE event_participation_option SET deleted = true WHERE event_id=$1`,
+		`UPDATE participation_status SET deleted = true WHERE event_id=$1`,
+	} {
+		if _, err := tx.Exec(ctx, q, id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
 }
 
 func (e *EventsDB) DeleteHardEventByID(ctx context.Context, id string) error {
@@ -416,7 +433,7 @@ func prepareEventCreateQuery(req Event) (string, string, []interface{}) {
 	return concatedCreateString, concatedNumString, args
 }
 
-func buildAndGetWhereEventQuery(slug string) string {
+func buildAndGetWhereEventQuery(args *sqlArgs, slug string) string {
 
 	var whereString strings.Builder
 	var whereCondition strings.Builder
@@ -427,7 +444,7 @@ func buildAndGetWhereEventQuery(slug string) string {
 
 	// WHERE query generation based on parameters
 	if slug != "" {
-		whereCondition.WriteString(fmt.Sprintf(" AND slug='%s'", slug))
+		whereCondition.WriteString(" AND slug=" + args.add(slug))
 	}
 
 	if whereCondition.String() != "" {

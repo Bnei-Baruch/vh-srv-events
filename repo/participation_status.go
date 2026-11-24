@@ -118,8 +118,13 @@ func (e *EventsDB) GetParticipationStatusByID(ctx context.Context, id string) (*
 
 func (e *EventsDB) GetAllParticipationStatus(ctx context.Context, skip string, limit string, eventID string, keycloakID string, country string,
 	email string, gender string, partOption string, firstName string, lastName string) ([]ParticipationStatusResponse, error) {
-	limitOffsetString := fmt.Sprintf(" LIMIT %s OFFSET %s", limit, skip)
-	userDbWhereQuery, orderByQuery := buildAndGetWhereQuery(eventID, keycloakID, country, email, gender, partOption, firstName, lastName)
+	var args sqlArgs
+	userDbWhereQuery, orderByQuery := buildAndGetWhereQuery(&args, eventID, keycloakID, country, email, gender, partOption, firstName, lastName)
+	// "ALL" (CSV export) means no limit; it is not a number to bind.
+	limitOffsetString := " OFFSET " + args.add(skip)
+	if limit != "ALL" {
+		limitOffsetString = " LIMIT " + args.add(limit) + limitOffsetString
+	}
 
 	rows, err := e.Query(ctx, `select 
 	participation_status.id,
@@ -153,7 +158,7 @@ func (e *EventsDB) GetAllParticipationStatus(ctx context.Context, skip string, l
 	participant.last_name
 	FROM participation_status 
 	LEFT JOIN event ON participation_status.event_id = event.id LEFT JOIN participant ON participation_status.participant_id = participant.id`+userDbWhereQuery+
-		orderByQuery+limitOffsetString)
+		orderByQuery+limitOffsetString, args...)
 	if err != nil {
 		return nil, fmt.Errorf("e.Query: %w", err)
 	}
@@ -186,7 +191,7 @@ func (e *EventsDB) UpdateParticipationStatusByID(ctx context.Context, req Partic
 		return common.ErrInvalidValues
 	}
 
-	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE participation_status SET %s WHERE id=%s`, toUpdate, id), toUpdateArgs...)
+	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE participation_status SET %s WHERE id=$%d`, toUpdate, len(toUpdateArgs)+1), append(toUpdateArgs, id)...)
 	if err != nil {
 		return fmt.Errorf("o.Exec: %w", err)
 	}
@@ -204,8 +209,9 @@ func (e *EventsDB) UpdateParticipationStatusByKcIDAndEventSlug(ctx context.Conte
 		return common.ErrInvalidValues
 	}
 
+	n := len(toUpdateArgs)
 	updateRes, err := e.Exec(ctx, fmt.Sprintf(`UPDATE participation_status SET %s WHERE participant_id=(SELECT id FROM participant as p 
-		WHERE p.keycloak_id='%s') AND event_id=(SELECT id FROM event as e WHERE e.slug='%s')`, toUpdate, kcID, eventSlug), toUpdateArgs...)
+		WHERE p.keycloak_id=$%d) AND event_id=(SELECT id FROM event as e WHERE e.slug=$%d)`, toUpdate, n+1, n+2), append(toUpdateArgs, kcID, eventSlug)...)
 	if err != nil {
 		return fmt.Errorf("o.Exec: %w", err)
 	}
@@ -255,10 +261,11 @@ func (e *EventsDB) GetTotalParticipationStatusCount(ctx context.Context, eventID
 	email string, gender string, partOption string, firstName string, lastName string) (int, error) {
 	var count int
 
-	userDbWhereQuery, _ := buildAndGetWhereQuery(eventID, keycloakID, country, email, gender, partOption, firstName, lastName)
+	var args sqlArgs
+	userDbWhereQuery, _ := buildAndGetWhereQuery(&args, eventID, keycloakID, country, email, gender, partOption, firstName, lastName)
 
 	err := e.QueryRow(ctx, `SELECT COUNT(*) FROM participation_status 
-	LEFT JOIN participant ON participation_status.participant_id = participant.id`+userDbWhereQuery).Scan(&count)
+	LEFT JOIN participant ON participation_status.participant_id = participant.id`+userDbWhereQuery, args...).Scan(&count)
 	if err != nil {
 		return 0, err
 	}
@@ -356,7 +363,7 @@ func prepareParticipationStatusCreateQuery(req ParticipationStatusStruct) (strin
 	return concatedCreateString, concatedNumString, args
 }
 
-func buildAndGetWhereQuery(eventID string, keycloakID string, country string, email string, gender string, partOption string, firstName string, lastName string) (string, string) {
+func buildAndGetWhereQuery(args *sqlArgs, eventID string, keycloakID string, country string, email string, gender string, partOption string, firstName string, lastName string) (string, string) {
 
 	var whereString strings.Builder
 	var orderBy strings.Builder
@@ -369,38 +376,38 @@ func buildAndGetWhereQuery(eventID string, keycloakID string, country string, em
 
 	// WHERE query generation based on parameters
 	if eventID != "" {
-		whereCondition.WriteString(fmt.Sprintf(" AND event_id=%s", eventID))
+		whereCondition.WriteString(" AND event_id=" + args.add(eventID))
 	}
 
 	if country != "" {
-		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participant.country)=LOWER('%s')", country))
+		whereCondition.WriteString(" AND LOWER(participant.country)=LOWER(" + args.add(country) + ")")
 	}
 
 	if email != "" {
-		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participant.email) LIKE LOWER('%%%s%%')", email))
+		whereCondition.WriteString(" AND LOWER(participant.email) LIKE LOWER('%' || " + args.add(email) + " || '%')")
 	}
 
 	if gender != "" {
-		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participant.gender)=LOWER('%s')", gender))
+		whereCondition.WriteString(" AND LOWER(participant.gender)=LOWER(" + args.add(gender) + ")")
 	}
 
 	if partOption != "" {
-		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participation_option) LIKE LOWER('%%%s%%')", partOption))
+		whereCondition.WriteString(" AND LOWER(participation_option) LIKE LOWER('%' || " + args.add(partOption) + " || '%')")
 	}
 
 	if firstName != "" {
-		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participant.first_name) LIKE LOWER('%%%s%%')", firstName))
+		whereCondition.WriteString(" AND LOWER(participant.first_name) LIKE LOWER('%' || " + args.add(firstName) + " || '%')")
 	}
 
 	if lastName != "" {
-		whereCondition.WriteString(fmt.Sprintf(" AND LOWER(participant.last_name) LIKE LOWER('%%%s%%')", lastName))
+		whereCondition.WriteString(" AND LOWER(participant.last_name) LIKE LOWER('%' || " + args.add(lastName) + " || '%')")
 	}
 
 	if keycloakID != "" {
 		if whereCondition.String() != "" {
-			whereCondition.WriteString(fmt.Sprintf(" AND participant.keycloak_id='%s'", keycloakID))
+			whereCondition.WriteString(" AND participant.keycloak_id=" + args.add(keycloakID))
 		} else {
-			whereCondition.WriteString(fmt.Sprintf(" participant.keycloak_id='%s'", keycloakID))
+			whereCondition.WriteString(" participant.keycloak_id=" + args.add(keycloakID))
 		}
 	}
 
