@@ -135,7 +135,7 @@ func (e *EventsAPI) CreateNewParticipationStatus(c *gin.Context) {
 			utils.LogFor(ctx).Error("CreateNewParticipationStatus notification [GetParticipationStatusByID]", slog.Any("err", err))
 			hub := utils.SentryFor(ctx)
 			hub.WithScope(func(scope *sentry.Scope) {
-				scope.SetExtra("participation_status_id", id)
+				scope.SetContext("participation_status", sentry.Context{"id": id})
 				hub.CaptureMessage("CreateNewParticipationStatus notification [GetParticipationStatusByID]")
 			})
 		}
@@ -145,7 +145,7 @@ func (e *EventsAPI) CreateNewParticipationStatus(c *gin.Context) {
 			utils.LogFor(ctx).Error("CreateNewParticipationStatus notification [SendConfirmationEmail]", slog.Any("err", err))
 			hub := utils.SentryFor(ctx)
 			hub.WithScope(func(scope *sentry.Scope) {
-				scope.SetExtra("participation_status_id", id)
+				scope.SetContext("participation_status", sentry.Context{"id": id})
 				hub.CaptureMessage("CreateNewParticipationStatus notification [SendConfirmationEmail]")
 			})
 		}
@@ -198,7 +198,7 @@ func (e *EventsAPI) UpdateParticipationStatus(c *gin.Context) {
 			utils.LogFor(ctx).Error("UpdateParticipationStatus notification [GetParticipationStatusByID]", slog.Any("err", err))
 			hub := utils.SentryFor(ctx)
 			hub.WithScope(func(scope *sentry.Scope) {
-				scope.SetExtra("participation_status_id", id)
+				scope.SetContext("participation_status", sentry.Context{"id": id})
 				hub.CaptureMessage("UpdateParticipationStatus notification [GetParticipationStatusByID]")
 			})
 		}
@@ -208,7 +208,7 @@ func (e *EventsAPI) UpdateParticipationStatus(c *gin.Context) {
 			utils.LogFor(ctx).Error("UpdateParticipationStatus notification [SendConfirmationEmail]", slog.Any("err", err))
 			hub := utils.SentryFor(ctx)
 			hub.WithScope(func(scope *sentry.Scope) {
-				scope.SetExtra("participation_status_id", id)
+				scope.SetContext("participation_status", sentry.Context{"id": id})
 				hub.CaptureMessage("UpdateParticipationStatus notification [SendConfirmationEmail]")
 			})
 		}
